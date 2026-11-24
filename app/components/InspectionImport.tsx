@@ -43,10 +43,21 @@ export default function InspectionImport({ knownAssetIds, onImported }: Props) {
   const importable = (result?.rows ?? []).filter(r => r.clean).map(r => r.clean!);
   const visible = (result?.rows ?? []).filter(r => filter === "all" || r.status === filter);
 
-  const doImport = () => {
-    setImported(prev => [...prev, ...importable]);
-    onImported?.(importable.length, importable);
-    reset();
+  const doImport = async () => {
+    try {
+      const response = await fetch("/api/pipeline-inspections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ records: importable }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.message ?? "Import failed.");
+      setImported(prev => [...prev, ...importable]);
+      onImported?.(payload.imported, importable);
+      reset();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Unable to save records to Neon.");
+    }
   };
 
   return (
@@ -133,8 +144,8 @@ export default function InspectionImport({ knownAssetIds, onImported }: Props) {
         <section className="panel table-panel">
           <div className="panel-heading table-heading">
             <div>
-              <div className="panel-kicker">IMPORTED THIS SESSION</div>
-              <h2>{imported.length} records (demo, kept in memory only)</h2>
+              <div className="panel-kicker">IMPORTED TO NEON</div>
+              <h2>{imported.length} records saved in the shared database</h2>
               <p>Thickness is normalised to mm and pressure to bar.</p>
             </div>
           </div>
