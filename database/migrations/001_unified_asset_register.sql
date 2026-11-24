@@ -45,21 +45,8 @@ BEGIN
   END IF;
 END $$;
 
--- Prevent duplicate source records when the same import is submitted again.
-CREATE UNIQUE INDEX IF NOT EXISTS production_readings_asset_date_uidx
-  ON production_readings (asset_id, reading_date);
-
-CREATE UNIQUE INDEX IF NOT EXISTS inspection_records_asset_date_tml_uidx
-  ON inspection_records (asset_id, inspection_date, tml_id);
-
-CREATE UNIQUE INDEX IF NOT EXISTS pipeline_inspections_asset_date_method_thickness_uidx
-  ON pipeline_inspections (asset_id, inspection_date, method, measured_thickness_mm);
-
-CREATE INDEX IF NOT EXISTS production_readings_asset_date_idx
-  ON production_readings (asset_id, reading_date DESC);
-
-CREATE INDEX IF NOT EXISTS inspection_records_asset_date_idx
-  ON inspection_records (asset_id, inspection_date DESC);
-
-CREATE INDEX IF NOT EXISTS pipeline_inspections_asset_date_idx
-  ON pipeline_inspections (asset_id, inspection_date DESC);
+-- Uniqueness is already enforced by these table constraints:
+-- production_readings: UNIQUE (asset_id, reading_date)
+-- inspection_records: UNIQUE (asset_id, inspection_date, tml_id)
+-- pipeline_inspections: UNIQUE (asset_id, inspection_date, method, measured_thickness_mm)
+-- Do not add duplicate indexes for these constraints.
