@@ -55,7 +55,10 @@ export default function UnifiedInsightsView({ department, notify }: { department
   const exportCsv=()=>{
     const rows=[["Asset ID","Asset name","Area","Department","Asset type","Nominal thickness (mm)","Latest thickness (mm)","Wall loss (%)","Condition","Last inspection","Operating pressure (bar)"],
       ...filtered.map(a=>{const nominal=Number(a.nominal_thickness??0),actual=Number(a.latest_thickness??0);return [a.asset_id,a.asset_name,a.area,a.department,a.asset_type,a.nominal_thickness,a.latest_thickness,nominal>0?((nominal-actual)/nominal*100).toFixed(2):"",a.condition,a.last_inspection_date,a.operating_pressure];})];
-    const csv="\uFEFF"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n");
+    const inspectionRows=inspections.filter(r=>filtered.some(a=>a.asset_id===r.assetId)&&(!from||r.date>=from)&&(!to||r.date<=to));
+    const productionRows=production.filter(r=>filtered.some(a=>a.asset_id===r.assetId)&&(!from||r.date>=from)&&(!to||r.date<=to));
+    rows.push([],["INSPECTION RECORDS"],["Asset ID","Date","TML","Nominal thickness (mm)","Measured thickness (mm)","Corrosion type"],...inspectionRows.map(r=>[r.assetId,r.date,r.tml,r.nominalMm,r.measuredMm,r.corrosionType]),[],["PRODUCTION READINGS"],["Asset ID","Date","Pressure (bar)","Temperature (°C)","Gas (MMSCFD)","Water (BWPD)","Oil (BOPD)"],...productionRows.map(r=>[r.assetId,r.date,r.pressure,r.temperature,r.gas,r.water,r.oil])];
+    const csv="\\uFEFF"+rows.map(r=>r.map(csvCell).join(",")).join("\\r\\n");
     const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
     const link=document.createElement("a");link.href=url;link.download="pertamina-asset-evaluation.csv";link.click();URL.revokeObjectURL(url);
     notify("CSV evaluation exported.");
