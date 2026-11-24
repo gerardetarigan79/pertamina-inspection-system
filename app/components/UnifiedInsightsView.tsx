@@ -58,7 +58,7 @@ export default function UnifiedInsightsView({ department, notify }: { department
     const inspectionRows=inspections.filter(r=>filtered.some(a=>a.asset_id===r.assetId)&&(!from||r.date>=from)&&(!to||r.date<=to));
     const productionRows=production.filter(r=>filtered.some(a=>a.asset_id===r.assetId)&&(!from||r.date>=from)&&(!to||r.date<=to));
     rows.push([],["INSPECTION RECORDS"],["Asset ID","Date","TML","Nominal thickness (mm)","Measured thickness (mm)","Corrosion type"],...inspectionRows.map(r=>[r.assetId,r.date,r.tml,r.nominalMm,r.measuredMm,r.corrosionType]),[],["PRODUCTION READINGS"],["Asset ID","Date","Pressure (bar)","Temperature (°C)","Gas (MMSCFD)","Water (BWPD)","Oil (BOPD)"],...productionRows.map(r=>[r.assetId,r.date,r.pressure,r.temperature,r.gas,r.water,r.oil])];
-    const csv="\\uFEFF"+rows.map(r=>r.map(csvCell).join(",")).join("\\r\\n");
+    const csv="\uFEFF"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n");
     const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
     const link=document.createElement("a");link.href=url;link.download="pertamina-asset-evaluation.csv";link.click();URL.revokeObjectURL(url);
     notify("CSV evaluation exported.");
