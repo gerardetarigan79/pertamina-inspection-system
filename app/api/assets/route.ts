@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "../../lib/db";
+import { getSql } from "../../lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +7,7 @@ const DEPARTMENTS = ["Pipeline", "Surface Facility"] as const;
 
 export async function GET(request: NextRequest) {
   try {
+    const sql = getSql();
     const department = request.nextUrl.searchParams.get("department");
 
     if (department && !DEPARTMENTS.includes(department as (typeof DEPARTMENTS)[number])) {
