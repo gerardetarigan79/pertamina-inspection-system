@@ -33,6 +33,22 @@ export async function POST(request: NextRequest) {
     if (required.some(key => body[key] === undefined || body[key] === null || body[key] === "")) {
       return NextResponse.json({ success: false, message: "Missing required monitoring fields." }, { status: 400 });
     }
+
+    const date = String(body.date);
+    const couponId = String(body.couponId).trim();
+    const initial = Number(body.couponInitialG);
+    const retrieved = Number(body.couponFinalG);
+    const days = Number(body.exposureDays);
+    const injected = Number(body.injectedL);
+    const rate = Number(body.injectionRateLpd);
+    const validDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + "T00:00:00.000Z").toISOString().slice(0, 10) === date;
+    if (!validDate) return NextResponse.json({ success: false, message: "Enter a valid reading date (YYYY-MM-DD)." }, { status: 400 });
+    if (couponId.length < 1 || couponId.length > 30) return NextResponse.json({ success: false, message: "Coupon ID must contain 1–30 characters." }, { status: 400 });
+    if (![initial, retrieved, days, injected, rate].every(Number.isFinite)) return NextResponse.json({ success: false, message: "Numeric fields must contain valid numbers." }, { status: 400 });
+    if (initial <= 0 || retrieved < 0 || retrieved > initial) return NextResponse.json({ success: false, message: "Coupon weights are invalid. Retrieved weight must be between zero and the initial weight." }, { status: 400 });
+    if (!Number.isInteger(days) || days < 1 || days > 365) return NextResponse.json({ success: false, message: "Exposure must be a whole number between 1 and 365 days." }, { status: 400 });
+    if (injected < 0 || rate < 0) return NextResponse.json({ success: false, message: "Injection volume and rate cannot be negative." }, { status: 400 });
+
     const sql = getSql();
     const rows = await sql`
       INSERT INTO corrosion_monitoring
