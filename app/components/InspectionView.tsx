@@ -121,7 +121,7 @@ export default function InspectionView({ department, period, notify }: { departm
           </table>
           {!visible.length && <div className="empty-state">{emptyText}</div>}
         </div>
-        <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length} records <span className="demo-note">· Sample data from a mock SAP endpoint</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
+        <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length} records <span className="demo-note">· Shared Neon database · sample source records</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
       </section>
     </>
   );
