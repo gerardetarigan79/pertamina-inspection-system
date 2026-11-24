@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const days = Number(body.exposureDays);
     const injected = Number(body.injectedL);
     const rate = Number(body.injectionRateLpd);
-    const validDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + "T00:00:00.000Z").toISOString().slice(0, 10) === date;
+    const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + "T00:00:00.000Z").toISOString().slice(0, 10) === date;
     if (!validDate) return NextResponse.json({ success: false, message: "Enter a valid reading date (YYYY-MM-DD)." }, { status: 400 });
     if (couponId.length < 1 || couponId.length > 30) return NextResponse.json({ success: false, message: "Coupon ID must contain 1–30 characters." }, { status: 400 });
     if (![initial, retrieved, days, injected, rate].every(Number.isFinite)) return NextResponse.json({ success: false, message: "Numeric fields must contain valid numbers." }, { status: 400 });
