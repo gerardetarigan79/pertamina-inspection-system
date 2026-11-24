@@ -90,7 +90,6 @@ export default function UnifiedInsightsView({ department, notify }: { department
           {previewOpen&&<div role="status" aria-label="Selected asset details" style={{position:"absolute",zIndex:100,top:"calc(100% + 12px)",left:0,width:"min(440px, calc(100vw - 48px))",padding:16,borderRadius:14,background:"#10243a",color:"#f7fbff",border:"1px solid rgba(255,255,255,.14)",boxShadow:"0 18px 42px rgba(9,24,40,.28)",isolation:"isolate"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:14}}>
               <div><div style={{fontSize:10,fontWeight:800,letterSpacing:"1.4px",color:"#91b7d8"}}>ASSET PROFILE</div><div style={{fontSize:15,fontWeight:700,marginTop:3}}>Selected asset details</div></div>
-              <span style={{fontSize:10,fontWeight:700,letterSpacing:".5px",padding:"5px 8px",borderRadius:20,background:"rgba(255,255,255,.1)",color:"#dbeafe"}}>HOVER PREVIEW</span>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>
               {[
