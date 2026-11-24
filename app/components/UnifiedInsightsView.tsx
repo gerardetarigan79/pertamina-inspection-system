@@ -18,10 +18,9 @@ export default function UnifiedInsightsView({ department, notify }: { department
   const [production,setProduction]=useState<Production[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
-  const [search,setSearch]=useState("");
-  const [area,setArea]=useState("All areas");
-  const [assetType,setAssetType]=useState("All types");
   const [selected,setSelected]=useState("");
+  const [directoryOpen,setDirectoryOpen]=useState(false);
+  const [previewOpen,setPreviewOpen]=useState(false);
   const [from,setFrom]=useState("");
   const [to,setTo]=useState("");
 
@@ -36,12 +35,7 @@ export default function UnifiedInsightsView({ department, notify }: { department
     finally{if(live)setLoading(false);}
   })(); return ()=>{live=false;};},[]);
 
-  const filtered=useMemo(()=>assets.filter(a=>
-    (department==="All departments"||a.department===department) &&
-    (area==="All areas"||a.area===area) &&
-    (assetType==="All types"||a.asset_type===assetType) &&
-    (a.asset_id+" "+a.asset_name).toLowerCase().includes(search.toLowerCase())
-  ),[assets,department,area,assetType,search]);
+  const filtered=useMemo(()=>assets.filter(a=>department==="All departments"||a.department===department),[assets,department]);
   const selectedAsset=filtered.find(a=>a.asset_id===selected)??filtered[0];
   const assetInspections=useMemo(()=>inspections.filter(r=>r.assetId===selectedAsset?.asset_id&&(!from||r.date>=from)&&(!to||r.date<=to)).sort((a,b)=>a.date.localeCompare(b.date)),[inspections,selectedAsset,from,to]);
   const assetProduction=useMemo(()=>production.filter(r=>r.assetId===selectedAsset?.asset_id&&(!from||r.date>=from)&&(!to||r.date<=to)).sort((a,b)=>a.date.localeCompare(b.date)),[production,selectedAsset,from,to]);
@@ -85,18 +79,25 @@ export default function UnifiedInsightsView({ department, notify }: { department
       </div>
     </section>
 
-    <section className="panel" style={{padding:22,marginBottom:18}}>
-      <div className="panel-heading"><div><div className="panel-kicker">US-09 / ASSET SEARCH</div><h2>Find an asset</h2><p>Filter by Asset ID, name, area, department and asset type</p></div><span className="source-count">{filtered.length} MATCHING ASSETS</span></div>
-      <div className="table-toolbar" style={{flexWrap:"wrap"}}>
-        <div className="search-box"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search Asset ID or name…"/></div>
-        <label className="select-wrap"><select value={area} onChange={e=>setArea(e.target.value)}><option>All areas</option>{areaOptions.map(v=><option key={v}>{v}</option>)}</select></label>
-        <label className="select-wrap"><select value={assetType} onChange={e=>setAssetType(e.target.value)}><option>All types</option>{typeOptions.map(v=><option key={v}>{v}</option>)}</select></label>
-      </div>
-      <div className="table-scroll"><table><thead><tr><th>ASSET ID / NAME</th><th>AREA</th><th>TYPE</th><th>DEPARTMENT</th><th>CONDITION</th><th/></tr></thead><tbody>{filtered.map(a=><tr key={a.asset_id} style={{background:selectedAsset?.asset_id===a.asset_id?"rgba(36,112,180,.07)":undefined}}><td><div className="asset-name">{a.asset_name}</div><div className="asset-id">{a.asset_id}</div></td><td>{a.area}</td><td>{a.asset_type}</td><td>{a.department}</td><td>{a.condition??"Unknown"}</td><td><button className="button button-outline" onClick={()=>setSelected(a.asset_id)}>Evaluate</button></td></tr>)}</tbody></table>{filtered.length===0&&<div className="empty-state">No assets match the selected filters.</div>}</div>
-    </section>
-
     {selectedAsset&&<section className="panel" style={{padding:22,marginBottom:18}}>
-      <div className="panel-heading"><div><div className="panel-kicker">US-05 / ASSET DETAIL</div><h2>{selectedAsset.asset_name}</h2><p>{selectedAsset.asset_id} · {selectedAsset.area} · {selectedAsset.department}</p></div><span className="discipline-tag">{selectedAsset.condition??"Condition unavailable"}</span></div>
+      <div className="panel-heading" style={{alignItems:"flex-start",gap:16,flexWrap:"wrap"}}><div><div className="panel-kicker">US-05 / US-09 · ASSET OVERVIEW</div><h2>Asset evaluation</h2><p>Select an asset to view its inspection history and production context</p></div><span className="source-count">{filtered.length} REGISTERED ASSETS</span></div>
+      <div style={{display:"flex",gap:10,alignItems:"flex-start",flexWrap:"wrap",margin:"16px 0 10px"}}>
+        <div style={{flex:"1 1 320px",minWidth:240,position:"relative"}} onMouseEnter={()=>setPreviewOpen(true)} onMouseLeave={()=>setPreviewOpen(false)} onFocus={()=>setPreviewOpen(true)} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setPreviewOpen(false);}}>
+          <label className="panel-kicker" htmlFor="asset-selector">FIND AN ASSET</label>
+          <select id="asset-selector" value={selectedAsset.asset_id} onChange={e=>setSelected(e.target.value)} style={{width:"100%",marginTop:7}}>
+            {filtered.map(a=><option key={a.asset_id} value={a.asset_id}>{a.asset_id} — {a.asset_name}</option>)}
+          </select>
+          {previewOpen&&<div className="sub-panel" style={{position:"absolute",zIndex:5,top:"100%",left:0,right:0,marginTop:6,padding:14,boxShadow:"0 12px 30px rgba(0,0,0,.28)"}}>
+            <div className="table-scroll"><table><thead><tr><th>AREA</th><th>TYPE</th><th>DEPARTMENT</th><th>CONDITION</th></tr></thead><tbody><tr><td>{selectedAsset.area}</td><td>{selectedAsset.asset_type}</td><td>{selectedAsset.department}</td><td>{selectedAsset.condition??"Unknown"}</td></tr></tbody></table></div>
+          </div>}
+        </div>
+        <button className="button button-outline" style={{marginTop:22}} onClick={()=>setDirectoryOpen(v=>!v)}>{directoryOpen?"Hide asset list":"View all assets"}</button>
+      </div>
+      {directoryOpen&&<div className="sub-panel" style={{margin:"12px 0 18px",padding:14}}>
+        <div className="panel-kicker">REGISTERED ASSETS · {filtered.length}</div>
+        <div className="table-scroll"><table><thead><tr><th>ASSET ID / NAME</th><th>AREA</th><th>TYPE</th><th>DEPARTMENT</th><th>CONDITION</th><th></th></tr></thead><tbody>{filtered.map(a=><tr key={a.asset_id}><td><div className="asset-name">{a.asset_id}</div><div className="asset-id">{a.asset_name}</div></td><td>{a.area}</td><td>{a.asset_type}</td><td>{a.department}</td><td>{a.condition??"Unknown"}</td><td><button className="button button-outline" onClick={()=>{setSelected(a.asset_id);setDirectoryOpen(false);}}>Select</button></td></tr>)}</tbody></table></div>
+      </div>}
+      <div className="panel-heading" style={{marginTop:16}}><div><div className="panel-kicker">SELECTED ASSET</div><h2>{selectedAsset.asset_name}</h2><p>{selectedAsset.asset_id} · {selectedAsset.area} · {selectedAsset.department}</p></div><span className="discipline-tag">{selectedAsset.condition??"Condition unavailable"}</span></div>
       <div className="filters" style={{margin:"14px 0 20px",display:"flex",gap:10,flexWrap:"wrap"}}><label className="select-wrap">From <input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="select-wrap">To <input aria-label="To date" type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><button className="button button-quiet" onClick={()=>{setFrom("");setTo("");}}>Clear dates</button></div>
       <div className="metric-grid">
         <InsightMetric label="Nominal wall thickness" value={selectedAsset.nominal_thickness!=null?Number(selectedAsset.nominal_thickness).toFixed(2)+" mm":"—"}/>
