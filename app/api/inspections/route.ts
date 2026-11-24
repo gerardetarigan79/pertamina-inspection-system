@@ -6,17 +6,18 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const sql = getSql();
-    const from = request.nextUrl.searchParams.get("from");
     const department = request.nextUrl.searchParams.get("department");
     const rows = await sql`
-      SELECT i.asset_id, i.inspection_date, i.tml_id, i.method,
-             i.nominal_wt_mm, i.measured_wt_mm, i.corrosion_type,
-             i.corrosion_depth_mm, i.corrosion_length_mm, i.corrosion_width_mm,
-             i.notification_no, i.inspector_team, i.source_system
+      SELECT i.asset_id AS "assetId",
+             to_char(i.inspection_date, 'YYYY-MM-DD') AS date,
+             i.tml_id AS tml, i.method, i.nominal_wt_mm AS "nominalMm",
+             i.measured_wt_mm AS "measuredMm", i.corrosion_type AS "corrosionType",
+             i.corrosion_depth_mm AS "depthMm", i.corrosion_length_mm AS "lengthMm",
+             i.corrosion_width_mm AS "widthMm", i.notification_no AS notification,
+             i.inspector_team AS team, i.source_system AS source
       FROM inspection_records i
       JOIN assets a ON a.asset_id = i.asset_id
-      WHERE (${from}::date IS NULL OR i.inspection_date >= ${from}::date)
-        AND (${department}::text IS NULL OR a.department = ${department})
+      WHERE (${department}::text IS NULL OR a.department = ${department})
       ORDER BY i.inspection_date DESC, i.asset_id, i.tml_id
     `;
     return NextResponse.json({ success: true, count: rows.length, records: rows });
