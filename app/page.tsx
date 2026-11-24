@@ -13,6 +13,7 @@ import InspectionView from "./components/InspectionView";
 import AssetConditionView from "./components/AssetConditionView";
 import InspectionImport from "./components/InspectionImport";
 import MonitoringView from "./components/MonitoringView";
+import UnifiedInsightsView from "./components/UnifiedInsightsView";
 
 type Asset = { id: string; name: string; area: string; department: string; thickness: string; pressure: string; status: string; date: string; };
 
@@ -131,7 +132,7 @@ const [assetsError, setAssetsError] = useState("");
 
           <div className="filter-row"><div className="filter-context"><span className="live-indicator"/> LIVE WORKSPACE SNAPSHOT <span className="filter-separator">/</span> <span>Updated just now</span></div><div className="filters"><label className="select-wrap"><Filter size={14}/><select value={department} onChange={e => setDepartment(e.target.value)}><option>All departments</option><option>Pipeline</option><option>Surface Facility</option></select><ChevronDown size={13}/></label><label className="select-wrap"><CalendarDays size={14}/><select value={period} onChange={e => setPeriod(e.target.value)}><option>Last 30 days</option><option>Last 7 days</option><option>Last 90 days</option></select><ChevronDown size={13}/></label></div></div>
 
-          {active === "Overview" ? <>
+          {active === "Overview" ? <UnifiedInsightsView department={department} notify={notify}/> : active === "Reports" ? <UnifiedInsightsView department={department} notify={notify}/> : active === "Asset register" ? (
             <div className="metric-grid">
               <Metric label="Registered assets" value="1,284" change="+12 this month" icon={<Database size={18}/>} tone="blue" trend="up"/>
               <Metric label="Inspections completed" value="368" change="+8.4% vs last period" icon={<ShieldCheck size={18}/>} tone="green" trend="up"/>
