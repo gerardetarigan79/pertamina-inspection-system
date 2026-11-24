@@ -79,19 +79,19 @@ export default function UnifiedInsightsView({ department, notify }: { department
       </div>
     </section>
 
-    {selectedAsset&&<section className="panel" style={{padding:22,marginBottom:18}}>
+    {selectedAsset&&<section className="panel" style={{padding:22,marginBottom:18,position:"relative",isolation:"isolate",overflow:"visible"}}>
       <div className="panel-heading" style={{alignItems:"flex-start",gap:16,flexWrap:"wrap"}}><div><div className="panel-kicker">US-05 / US-09 · ASSET OVERVIEW</div><h2>Asset evaluation</h2><p>Select an asset to view its inspection history and production context</p></div><span className="source-count">{filtered.length} REGISTERED ASSETS</span></div>
-      <div style={{display:"flex",gap:10,alignItems:"flex-start",flexWrap:"wrap",margin:"16px 0 10px"}}>
-        <div style={{flex:"1 1 320px",minWidth:240,position:"relative"}} onMouseEnter={()=>setPreviewOpen(true)} onMouseLeave={()=>setPreviewOpen(false)} onFocus={()=>setPreviewOpen(true)} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setPreviewOpen(false);}}>
+      <div style={{display:"flex",gap:10,alignItems:"flex-start",flexWrap:"wrap",margin:"16px 0 10px",position:"relative",zIndex:20}}>
+        <div style={{flex:"1 1 320px",minWidth:0,maxWidth:"100%",position:"relative"}} onMouseEnter={()=>setPreviewOpen(true)} onMouseLeave={()=>setPreviewOpen(false)} onFocus={()=>setPreviewOpen(true)} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setPreviewOpen(false);}}>
           <label className="panel-kicker" htmlFor="asset-selector">FIND AN ASSET</label>
           <select id="asset-selector" value={selectedAsset.asset_id} onChange={e=>setSelected(e.target.value)} style={{width:"100%",marginTop:7}}>
             {filtered.map(a=><option key={a.asset_id} value={a.asset_id}>{a.asset_id} — {a.asset_name}</option>)}
           </select>
-          {previewOpen&&<div className="sub-panel" style={{position:"absolute",zIndex:5,top:"100%",left:0,right:0,marginTop:6,padding:14,boxShadow:"0 12px 30px rgba(0,0,0,.28)"}}>
-            <div className="table-scroll"><table><thead><tr><th>AREA</th><th>TYPE</th><th>DEPARTMENT</th><th>CONDITION</th></tr></thead><tbody><tr><td>{selectedAsset.area}</td><td>{selectedAsset.asset_type}</td><td>{selectedAsset.department}</td><td>{selectedAsset.condition??"Unknown"}</td></tr></tbody></table></div>
+          {previewOpen&&<div role="status" className="sub-panel" style={{position:"absolute",zIndex:100,top:"100%",left:0,right:0,marginTop:6,padding:14,background:"#fff",backgroundColor:"#fff",border:"1px solid #dce4ed",boxShadow:"0 16px 36px rgba(16,36,58,.22)",opacity:1,backdropFilter:"none",WebkitBackdropFilter:"none",isolation:"isolate",overflowX:"auto",maxWidth:"min(620px, calc(100vw - 48px))"}}>
+            <table style={{width:"100%",minWidth:0,tableLayout:"auto",whiteSpace:"normal",background:"#fff"}}><thead><tr><th style={{padding:"8px 10px"}}>AREA</th><th style={{padding:"8px 10px"}}>TYPE</th><th style={{padding:"8px 10px"}}>DEPARTMENT</th><th style={{padding:"8px 10px"}}>CONDITION</th></tr></thead><tbody><tr><td style={{padding:"10px"}}>{selectedAsset.area}</td><td style={{padding:"10px"}}>{selectedAsset.asset_type}</td><td style={{padding:"10px"}}>{selectedAsset.department}</td><td style={{padding:"10px"}}>{selectedAsset.condition??"Unknown"}</td></tr></tbody></table>
           </div>}
         </div>
-        <button className="button button-outline" style={{marginTop:22}} onClick={()=>setDirectoryOpen(v=>!v)}>{directoryOpen?"Hide asset list":"View all assets"}</button>
+        <button className="button button-outline" style={{marginTop:22,flex:"0 0 auto",maxWidth:"100%",whiteSpace:"nowrap"}} onClick={()=>setDirectoryOpen(v=>!v)}>{directoryOpen?"Hide asset list":"View all assets"}</button>
       </div>
       {directoryOpen&&<div className="sub-panel" style={{margin:"12px 0 18px",padding:14}}>
         <div className="panel-kicker">REGISTERED ASSETS · {filtered.length}</div>
