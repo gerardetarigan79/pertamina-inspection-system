@@ -87,8 +87,22 @@ export default function UnifiedInsightsView({ department, notify }: { department
           <select id="asset-selector" value={selectedAsset.asset_id} onChange={e=>setSelected(e.target.value)} style={{width:"100%",marginTop:7}}>
             {filtered.map(a=><option key={a.asset_id} value={a.asset_id}>{a.asset_id} — {a.asset_name}</option>)}
           </select>
-          {previewOpen&&<div role="status" className="sub-panel" style={{position:"absolute",zIndex:100,top:"100%",left:0,right:0,marginTop:6,padding:14,background:"#fff",backgroundColor:"#fff",border:"1px solid #dce4ed",boxShadow:"0 16px 36px rgba(16,36,58,.22)",opacity:1,backdropFilter:"none",WebkitBackdropFilter:"none",isolation:"isolate",overflowX:"auto",maxWidth:"min(620px, calc(100vw - 48px))"}}>
-            <table style={{width:"100%",minWidth:0,tableLayout:"auto",whiteSpace:"normal",background:"#fff"}}><thead><tr><th style={{padding:"8px 10px"}}>AREA</th><th style={{padding:"8px 10px"}}>TYPE</th><th style={{padding:"8px 10px"}}>DEPARTMENT</th><th style={{padding:"8px 10px"}}>CONDITION</th></tr></thead><tbody><tr><td style={{padding:"10px"}}>{selectedAsset.area}</td><td style={{padding:"10px"}}>{selectedAsset.asset_type}</td><td style={{padding:"10px"}}>{selectedAsset.department}</td><td style={{padding:"10px"}}>{selectedAsset.condition??"Unknown"}</td></tr></tbody></table>
+          {previewOpen&&<div role="status" aria-label="Selected asset details" style={{position:"absolute",zIndex:100,top:"calc(100% + 12px)",left:0,width:"min(440px, calc(100vw - 48px))",padding:16,borderRadius:14,background:"#10243a",color:"#f7fbff",border:"1px solid rgba(255,255,255,.14)",boxShadow:"0 18px 42px rgba(9,24,40,.28)",isolation:"isolate"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:14}}>
+              <div><div style={{fontSize:10,fontWeight:800,letterSpacing:"1.4px",color:"#91b7d8"}}>ASSET PROFILE</div><div style={{fontSize:15,fontWeight:700,marginTop:3}}>Selected asset details</div></div>
+              <span style={{fontSize:10,fontWeight:700,letterSpacing:".5px",padding:"5px 8px",borderRadius:20,background:"rgba(255,255,255,.1)",color:"#dbeafe"}}>HOVER PREVIEW</span>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>
+              {[
+                {label:"AREA",value:selectedAsset.area},
+                {label:"ASSET TYPE",value:selectedAsset.asset_type},
+                {label:"DEPARTMENT",value:selectedAsset.department},
+                {label:"CONDITION",value:selectedAsset.condition??"Unknown"}
+              ].map(item=><div key={item.label} style={{minWidth:0,padding:"11px 12px",borderRadius:9,background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.08)"}}>
+                <div style={{fontSize:9,fontWeight:800,letterSpacing:"1.1px",color:"#91b7d8",marginBottom:5}}>{item.label}</div>
+                <div style={{fontSize:13,fontWeight:600,lineHeight:1.4,overflowWrap:"anywhere",color:"#fff"}}>{item.value}</div>
+              </div>)}
+            </div>
           </div>}
         </div>
         <button className="button button-outline" style={{marginTop:22,flex:"0 0 auto",maxWidth:"100%",whiteSpace:"nowrap"}} onClick={()=>setDirectoryOpen(v=>!v)}>{directoryOpen?"Hide asset list":"View all assets"}</button>
