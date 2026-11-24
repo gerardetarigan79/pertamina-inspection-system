@@ -12,7 +12,6 @@ import ProductionView from "./components/ProductionView";
 import InspectionView from "./components/InspectionView";
 import AssetConditionView from "./components/AssetConditionView";
 import InspectionImport from "./components/InspectionImport";
-import { ASSETS } from "./lib/assets";
 import MonitoringView from "./components/MonitoringView";
 
 type Asset = { id: string; name: string; area: string; department: string; thickness: string; pressure: string; status: string; date: string; };
@@ -39,6 +38,9 @@ const [assetsError, setAssetsError] = useState("");
       }
 
       const result = await response.json();
+      if (!result.success || !Array.isArray(result.data)) {
+        throw new Error(result.message ?? "Invalid asset response");
+      }
 
       const formattedAssets: Asset[] = result.data.map((item: any) => ({
         id: item.asset_id,
@@ -247,7 +249,7 @@ const [assetsError, setAssetsError] = useState("");
 
   </section>
 ) : active === "Production data" ? <ProductionView department={department} period={period} notify={notify}/>
-          : active === "Inspection records" ? (department === "Pipeline" ? <InspectionImport knownAssetIds={ASSETS.map(a => a.id)} onImported={n => notify(`${n} pipeline inspection records imported (demo, not saved).`)}/> : <InspectionView department={department} period={period} notify={notify}/>)          : active === "Corrosion monitoring" ? <MonitoringView department={department} notify={notify}/>
+          : active === "Inspection records" ? (department === "Pipeline" ? <InspectionImport knownAssetIds={assets.map(a => a.id)} onImported={n => notify(`${n} pipeline inspection records imported (demo, not saved).`)}/> : <InspectionView department={department} period={period} notify={notify}/>)          : active === "Corrosion monitoring" ? <MonitoringView department={department} notify={notify}/>
           : active === "Asset condition" ? <AssetConditionView department={department} period={period} notify={notify} initialCondition={conditionFilter} onBack={() => setActive("Overview")}/>
           : <section className="panel placeholder-panel"><div className="placeholder-icon"><Command size={25}/></div><div className="panel-kicker">{active.toUpperCase()}</div><h2>{active} workspace</h2><p>This section is part of the frontend prototype. The dashboard currently uses illustrative sample data; workflows and backend integrations will be developed in later iterations.</p><button className="button button-primary" onClick={() => setActive("Overview")}>Back to overview</button></section>}
           <footer className="footer"><span>PHM INTELLIGENCE <span className="footer-sep">/</span> INTERNAL WORKSPACE</span><span>Frontend prototype · Sample data only</span><span>v0.1.0</span></footer>
