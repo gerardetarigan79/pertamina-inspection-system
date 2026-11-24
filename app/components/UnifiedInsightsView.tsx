@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import LineChart from "./LineChart";
 import { Activity, AlertTriangle, Download, FileSpreadsheet, Printer, Search, ShieldCheck } from "lucide-react";
 
 type Asset = { asset_id:string; asset_name:string; asset_type:string; area:string; department:string; nominal_thickness:number|null; latest_thickness:number|null; operating_pressure:number|null; condition:string|null; last_inspection_date:string|null };
@@ -44,6 +45,8 @@ export default function UnifiedInsightsView({ department, notify }: { department
   const selectedAsset=filtered.find(a=>a.asset_id===selected)??filtered[0];
   const assetInspections=useMemo(()=>inspections.filter(r=>r.assetId===selectedAsset?.asset_id&&(!from||r.date>=from)&&(!to||r.date<=to)).sort((a,b)=>a.date.localeCompare(b.date)),[inspections,selectedAsset,from,to]);
   const assetProduction=useMemo(()=>production.filter(r=>r.assetId===selectedAsset?.asset_id&&(!from||r.date>=from)&&(!to||r.date<=to)).sort((a,b)=>a.date.localeCompare(b.date)),[production,selectedAsset,from,to]);
+  const thicknessTrend=useMemo(()=>{const byDate=new Map<string,number[]>();for(const r of assetInspections){const values=byDate.get(r.date)??[];values.push(Number(r.measuredMm));byDate.set(r.date,values);}return Array.from(byDate,([date,values])=>({date,value:Math.min(...values)})).sort((a,b)=>a.date.localeCompare(b.date));},[assetInspections]);
+  const pressureTrend=useMemo(()=>assetProduction.map(r=>({date:r.date,value:Number(r.pressure)})),[assetProduction]);
   const alerts=useMemo(()=>assets.map(a=>{
     const nominal=Number(a.nominal_thickness??0), measured=Number(a.latest_thickness??0);
     const loss=nominal>0&&measured>0?(nominal-measured)/nominal*100:0;
@@ -101,7 +104,9 @@ export default function UnifiedInsightsView({ department, notify }: { department
         <div><div className="panel-kicker">WALL THICKNESS HISTORY</div><div className="table-scroll"><table><thead><tr><th>DATE</th><th>TML</th><th>NOMINAL (MM)</th><th>ACTUAL (MM)</th><th>WALL LOSS</th></tr></thead><tbody>{assetInspections.map((r,i)=><tr key={r.date+"-"+r.tml+"-"+i}><td>{dateLabel(r.date)}</td><td>{r.tml}</td><td>{Number(r.nominalMm).toFixed(2)}</td><td>{Number(r.measuredMm).toFixed(2)}</td><td>{r.nominalMm>0?(((r.nominalMm-r.measuredMm)/r.nominalMm)*100).toFixed(1)+"%":"—"}</td></tr>)}</tbody></table>{assetInspections.length===0&&<div className="empty-state">No inspection records in this date range.</div>}</div></div>
         <div><div className="panel-kicker">PRODUCTION CONTEXT</div><div className="table-scroll"><table><thead><tr><th>DATE</th><th>PRESSURE</th><th>TEMP.</th><th>GAS</th><th>WATER</th><th>OIL</th></tr></thead><tbody>{assetProduction.slice(0,12).map((r,i)=><tr key={r.date+"-"+i}><td>{dateLabel(r.date)}</td><td>{Number(r.pressure).toFixed(1)} bar</td><td>{Number(r.temperature).toFixed(1)} °C</td><td>{Number(r.gas).toFixed(2)}</td><td>{Number(r.water).toFixed(0)}</td><td>{Number(r.oil).toFixed(0)}</td></tr>)}</tbody></table>{assetProduction.length===0&&<div className="empty-state">No production readings in this date range.</div>}</div></div>
       </div>
-    </section>}
+ 
+      <div className="detail-grid" style={{marginTop:18}}><div className="sub-panel"><h3>Wall thickness trend</h3><p>Lowest measured thickness per inspection date; nominal reference is shown above</p><LineChart points={thicknessTrend} unit="mm" digits={2}/></div><div className="sub-panel"><h3>Operating pressure trend</h3><p>Pressure readings for the selected asset</p><LineChart points={pressureTrend} unit="bar" digits={1}/></div></div>
+   </section>}
 
     <section className="panel" style={{padding:22}}>
       <div className="panel-heading"><div><div className="panel-kicker">US-07 / THICKNESS SCREENING</div><h2>Assets requiring review</h2><p>Prototype screening flags wall loss of 20% or more against nominal thickness. This is not an engineering minimum allowable thickness.</p></div><span className="attention-number">{alerts.length.toString().padStart(2,"0")}</span></div>
