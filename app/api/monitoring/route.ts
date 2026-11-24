@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const id = request.nextUrl.searchParams.get("id");
-    if (!id || !/^\\d+$/.test(id)) return NextResponse.json({ success: false, message: "A valid record ID is required." }, { status: 400 });
+    if (!id || !/^\d+$/.test(id)) return NextResponse.json({ success: false, message: "A valid record ID is required." }, { status: 400 });
     const sql = getSql();
     const rows = await sql`DELETE FROM corrosion_monitoring WHERE id = ${id}::bigint RETURNING id`;
     return NextResponse.json({ success: true, deleted: rows.length === 1 });
