@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { Activity, AlertTriangle, Download, FileSpreadsheet, Printer, Search, ShieldCheck } from "lucide-react";
 
 type Asset = { asset_id:string; asset_name:string; asset_type:string; area:string; department:string; nominal_thickness:number|null; latest_thickness:number|null; operating_pressure:number|null; condition:string|null; last_inspection_date:string|null };
@@ -8,7 +9,7 @@ type Inspection = { assetId:string; date:string; tml:string; nominalMm:number; m
 type Production = { assetId:string; date:string; pressure:number; temperature:number; gas:number; water:number; oil:number };
 
 const dateLabel=(value:string)=>new Date(value+"T00:00:00").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-const csvCell=(value:unknown)=>'"'+String(value??"").replaceAll('"','""')+'"';
+const csvCell=(value:unknown)=>'"'+String(value??"").replace(/"/g,'""')+'"';
 
 export default function UnifiedInsightsView({ department, notify }: { department:string; notify:(message:string)=>void }) {
   const [assets,setAssets]=useState<Asset[]>([]);
@@ -107,6 +108,6 @@ export default function UnifiedInsightsView({ department, notify }: { department
   </div>;
 }
 
-function InsightMetric({label,value,icon}:{label:string;value:string|number;icon?:React.ReactNode}) {
+function InsightMetric({label,value,icon}:{label:string;value:string|number;icon?:ReactNode}) {
   return <div className="metric-card"><div className="metric-label">{label}</div><div className="metric-value">{value}</div>{icon&&<div className="metric-icon">{icon}</div>}</div>;
 }
