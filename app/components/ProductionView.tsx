@@ -128,7 +128,7 @@ export default function ProductionView({ department, period, notify }: { departm
           </table>
           {!visible.length && <div className="empty-state">{ready && !syncing ? "No records match your filters." : "Loading…"}</div>}
         </div>
-        <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length.toLocaleString("en-US")} records <span className="demo-note">· Sample data from a mock Direct Viewer endpoint</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
+        <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length.toLocaleString("en-US")} records <span className="demo-note">· Shared Neon database · sample source records</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
       </section>
     </>
   );
