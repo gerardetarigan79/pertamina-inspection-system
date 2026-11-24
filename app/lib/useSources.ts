@@ -1,64 +1,42 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { APP_TODAY, addDays } from "./dates";
-import { mergeInspections, mergeProduction } from "./ingest";
-import type { InspectionRecord, ProductionRecord, RawInspection, RawProduction, SyncResult } from "./types";
-import { useSourceStore } from "./useSourceStore";
+import { useCallback, useEffect, useState } from "react";
+import type { InspectionRecord, ProductionRecord, SyncResult } from "./types";
 
-type Window = { from: string; to: string };
+type SourceState<T> = { records: T[]; result: SyncResult | null };
 
-type Options<T, Raw> = {
-  key: string;
-  endpoint: string;
-  label: string;
-  backfillDays: number; // first import window
-  overlapDays: number; // later syncs re-pull this many days to pick up revisions
-  merge: (existing: T[], raw: Raw[], window: Window) => { records: T[]; result: SyncResult };
-  notify: (message: string) => void;
-};
-
-/** Stored records for one source system plus its sync action; imports automatically on first use. */
-function useSource<T, Raw>(options: Options<T, Raw>) {
-  const { state, save, ready } = useSourceStore<T>(options.key);
+function useDatabaseSource<T>(endpoint: string, label: string, notify: (message: string) => void) {
+  const [state, setState] = useState<SourceState<T>>({ records: [], result: null });
+  const [ready, setReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
-  const latest = useRef(options);
-  latest.current = options;
 
-  const sync = useCallback(async (silent: boolean) => {
-    const o = latest.current;
+  const sync = useCallback(async (silent = false) => {
     setSyncing(true);
     setError("");
     try {
-      const backfillFrom = addDays(APP_TODAY, -(o.backfillDays - 1));
-      const lastTo = state.result?.window.to;
-      const overlapFrom = lastTo ? addDays(lastTo, -o.overlapDays) : backfillFrom;
-      const from = overlapFrom > backfillFrom ? overlapFrom : backfillFrom;
-      const res = await fetch(`${o.endpoint}?from=${from}&to=${APP_TODAY}`);
-      if (!res.ok) throw new Error(`${o.label} responded with status ${res.status}.`);
-      const payload = (await res.json()) as { records: Raw[] };
-      const { records, result } = o.merge(state.records, payload.records, { from, to: APP_TODAY });
-      save({ records, result });
-      if (!silent) o.notify(`${o.label} synced: ${result.added} new, ${result.updated} updated, ${result.unchanged} unchanged.`);
-    } catch (e) {
-      setError(e instanceof Error ? `Sync failed: ${e.message}` : "Sync failed.");
+      const response = await fetch(endpoint, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok || !payload.success || !Array.isArray(payload.records)) {
+        throw new Error(payload.message ?? `Unable to load ${label.toLowerCase()} from Neon.`);
+      }
+      setState({ records: payload.records as T[], result: null });
+      if (!silent) notify(`${label}: loaded ${payload.records.length} records from Neon.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : `Unable to load ${label.toLowerCase()}.`);
     } finally {
+      setReady(true);
       setSyncing(false);
     }
-  }, [state, save]);
+  }, [endpoint, label, notify]);
 
-  // First use: import automatically, no manual request needed.
-  const autoRan = useRef(false);
-  useEffect(() => {
-    if (ready && !state.result && !autoRan.current) { autoRan.current = true; void sync(true); }
-  }, [ready, state.result, sync]);
+  useEffect(() => { void sync(true); }, [sync]);
 
   return { state, ready, syncing, error, sync };
 }
 
-export const useProductionSource = (notify: (m: string) => void) =>
-  useSource<ProductionRecord, RawProduction>({ key: "phm:v1:production", endpoint: "/api/direct-viewer", label: "Direct Viewer", backfillDays: 90, overlapDays: 7, merge: mergeProduction, notify });
+export const useProductionSource = (notify: (message: string) => void) =>
+  useDatabaseSource<ProductionRecord>("/api/production", "Production data", notify);
 
-export const useInspectionSource = (notify: (m: string) => void) =>
-  useSource<InspectionRecord, RawInspection>({ key: "phm:v1:inspection-sap", endpoint: "/api/sap/inspections", label: "SAP", backfillDays: 365, overlapDays: 30, merge: mergeInspections, notify });
+export const useInspectionSource = (notify: (message: string) => void) =>
+  useDatabaseSource<InspectionRecord>("/api/inspections", "Inspection records", notify);
