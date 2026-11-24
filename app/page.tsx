@@ -124,7 +124,7 @@ const [assetsError, setAssetsError] = useState("");
       <section className="main-area">
         <header className="topbar">
           <div className="topbar-left"><button className="icon-button menu-toggle" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu size={19}/></button><div className="breadcrumb">Workspace <ChevronRight size={13}/> <strong>{title}</strong></div></div>
-          <div className="topbar-right"><div className="topbar-date"><CalendarDays size={15}/> Friday, 13 November 2026</div><button className="icon-button notification" onClick={() => notify("You're all caught up. No new notifications.")} aria-label="Notifications"><Bell size={18}/><i/></button><div className="top-avatar">GT</div></div>
+          <div className="topbar-right"><div className="topbar-date"><CalendarDays size={15}/> {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}</div><button className="icon-button notification" onClick={() => notify("You're all caught up. No new notifications.")} aria-label="Notifications"><Bell size={18}/><i/></button><div className="top-avatar">GT</div></div>
         </header>
 
         <div className="page-content">
