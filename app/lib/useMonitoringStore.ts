@@ -1,41 +1,48 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { sampleMonitoring } from "./monitoring";
 import type { MonitoringRecord } from "./types";
 
-const KEY = "phm:v1:monitoring";
-
-/**
- * Corrosion monitoring log, kept in localStorage until a backend exists.
- * Seeded once with sample history that stands in for the Excel workbook;
- * after that, deleting every record does not bring the sample data back.
- */
 export function useMonitoringStore() {
   const [records, setRecords] = useState<MonitoringRecord[]>([]);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    let initial: MonitoringRecord[] | null = null;
+  const refresh = useCallback(async () => {
+    setError("");
     try {
-      const raw = window.localStorage.getItem(KEY);
-      if (raw !== null) initial = JSON.parse(raw) as MonitoringRecord[];
-    } catch { /* unavailable or corrupt: fall through to sample data */ }
-    if (!initial) {
-      initial = sampleMonitoring();
-      try { window.localStorage.setItem(KEY, JSON.stringify(initial)); } catch { /* ignore */ }
+      const response = await fetch("/api/monitoring", { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok || !payload.success || !Array.isArray(payload.records)) {
+        throw new Error(payload.message ?? "Unable to load corrosion monitoring from Neon.");
+      }
+      setRecords(payload.records as MonitoringRecord[]);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to load corrosion monitoring.");
+    } finally {
+      setReady(true);
     }
-    setRecords(initial);
-    setReady(true);
   }, []);
 
-  const persist = useCallback((next: MonitoringRecord[]) => {
-    setRecords(next);
-    try { window.localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* ignore quota/private mode */ }
-  }, []);
+  useEffect(() => { void refresh(); }, [refresh]);
 
-  const add = useCallback((record: MonitoringRecord) => persist([...records, record]), [records, persist]);
-  const remove = useCallback((id: string) => persist(records.filter(r => r.id !== id)), [records, persist]);
+  const add = useCallback(async (record: MonitoringRecord) => {
+    const response = await fetch("/api/monitoring", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(record),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload.message ?? "Unable to save monitoring record.");
+    await refresh();
+  }, [refresh]);
 
-  return { records, ready, add, remove };
+  const remove = useCallback(async (id: string) => {
+    const response = await fetch(`/api/monitoring?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload.message ?? "Unable to delete monitoring record.");
+    await refresh();
+  }, [refresh]);
+
+  return { records, ready, error, add, remove, refresh };
 }
