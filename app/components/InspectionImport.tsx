@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, Upload, X } from "lucide-react";
 import { validateInspectionCsv, type CleanRecord, type ParseResult, type RowStatus } from "../lib/inspection-import";
 type Props = {
@@ -20,6 +20,15 @@ export default function InspectionImport({ knownAssetIds, onImported }: Props) {
   const [filter, setFilter] = useState<"all" | RowStatus>("all");
   const [imported, setImported] = useState<CleanRecord[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const refreshImported = async () => {
+    const response = await fetch("/api/pipeline-inspections", { cache: "no-store" });
+    const payload = await response.json();
+    if (!response.ok || !payload.success || !Array.isArray(payload.records)) throw new Error(payload.message ?? "Unable to load pipeline inspections from Neon.");
+    setImported(payload.records.map((r: any) => ({ assetId: r.assetId, inspectionDate: r.date, method: r.method, thicknessMm: Number(r.thicknessMm), pressureBar: r.pressureBar == null ? null : Number(r.pressureBar), inspector: r.inspector, remarks: r.remarks ?? "" })));
+  };
+
+  useEffect(() => { void refreshImported().catch(error => window.alert(error instanceof Error ? error.message : "Unable to load pipeline inspections.")); }, []);
 
   const handleFile = async (file?: File) => {
     if (!file) return;
@@ -52,7 +61,7 @@ export default function InspectionImport({ knownAssetIds, onImported }: Props) {
       });
       const payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.message ?? "Import failed.");
-      setImported(prev => [...prev, ...importable]);
+      await refreshImported();
       onImported?.(payload.imported, importable);
       reset();
     } catch (error) {
@@ -145,7 +154,7 @@ export default function InspectionImport({ knownAssetIds, onImported }: Props) {
           <div className="panel-heading table-heading">
             <div>
               <div className="panel-kicker">IMPORTED TO NEON</div>
-              <h2>{imported.length} records saved in the shared database</h2>
+              <h2>{imported.length} records in the shared database</h2>
               <p>Thickness is normalised to mm and pressure to bar.</p>
             </div>
           </div>
