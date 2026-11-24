@@ -8,9 +8,12 @@ export async function GET(request: NextRequest) {
     const sql = getSql();
     const department = request.nextUrl.searchParams.get("department");
     const rows = await sql`
-      SELECT m.id::text AS id, m.asset_id, m.reading_date, m.coupon_id,
-             m.coupon_initial_g, m.coupon_final_g, m.exposure_days, m.inhibitor,
-             m.injected_l, m.injection_rate_lpd, m.notes, m.source_system
+      SELECT m.id::text AS id, m.asset_id AS "assetId",
+             to_char(m.reading_date, 'YYYY-MM-DD') AS date, m.coupon_id AS "couponId",
+             m.coupon_initial_g AS "couponInitialG", m.coupon_final_g AS "couponFinalG",
+             m.exposure_days AS "exposureDays", m.inhibitor, m.injected_l AS "injectedL",
+             m.injection_rate_lpd AS "injectionRateLpd", m.notes,
+             m.source_system AS source
       FROM corrosion_monitoring m
       JOIN assets a ON a.asset_id = m.asset_id
       WHERE (${department}::text IS NULL OR a.department = ${department})
@@ -40,25 +43,23 @@ export async function POST(request: NextRequest) {
              ${Number(body.exposureDays)}, ${String(body.inhibitor ?? "")},
              ${Number(body.injectedL)}, ${Number(body.injectionRateLpd)},
              ${String(body.notes ?? "")}, 'Form'
-      FROM assets a
-      WHERE a.asset_id = ${String(body.assetId)}
+      FROM assets a WHERE a.asset_id = ${String(body.assetId)}
       RETURNING id::text AS id
     `;
     if (!rows.length) return NextResponse.json({ success: false, message: "Asset ID was not found." }, { status: 400 });
     return NextResponse.json({ success: true, id: rows[0].id }, { status: 201 });
   } catch (error) {
     console.error("Failed to save corrosion monitoring record:", error);
-    const message = error instanceof Error && error.message.includes("corrosion_monitoring_asset_date_coupon_key")
-      ? "A reading already exists for this asset, date and coupon."
-      : "Failed to save corrosion monitoring record.";
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    const detail = error instanceof Error ? error.message : "";
+    const duplicate = detail.includes("corrosion_monitoring_asset_date_coupon_key");
+    return NextResponse.json({ success: false, message: duplicate ? "A reading already exists for this asset, date and coupon." : "Failed to save corrosion monitoring record." }, { status: duplicate ? 409 : 500 });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
     const id = request.nextUrl.searchParams.get("id");
-    if (!id || !/^\d+$/.test(id)) return NextResponse.json({ success: false, message: "A valid record ID is required." }, { status: 400 });
+    if (!id || !/^\\d+$/.test(id)) return NextResponse.json({ success: false, message: "A valid record ID is required." }, { status: 400 });
     const sql = getSql();
     const rows = await sql`DELETE FROM corrosion_monitoring WHERE id = ${id}::bigint RETURNING id`;
     return NextResponse.json({ success: true, deleted: rows.length === 1 });
