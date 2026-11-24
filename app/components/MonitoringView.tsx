@@ -64,7 +64,7 @@ export default function MonitoringView({ department, notify }: { department: str
     };
   }, [form]);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
     const found = validate(form, records);
@@ -73,7 +73,12 @@ export default function MonitoringView({ department, notify }: { department: str
       document.getElementById(id(first))?.focus();
       return;
     }
-    add(buildRecord(form));
+    try {
+      await add(buildRecord(form));
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Unable to save monitoring record to Neon.");
+      return;
+    }
     const hidden = department !== "All departments" && getAsset(form.assetId)?.department !== department;
     notify(`Monitoring record saved for ${form.assetId}.${hidden ? " It is hidden by the current department filter." : ""}`);
     setForm({ ...emptyForm(form.assetId), date: form.date, weightUnit: form.weightUnit, rateUnit: form.rateUnit, inhibitor: form.inhibitor });
@@ -265,7 +270,7 @@ export default function MonitoringView({ department, notify }: { department: str
                   <td className="row-actions">
                     {confirmId === r.id ? (
                       <>
-                        <button className="mini-button danger" onClick={() => { remove(r.id); setConfirmId(null); notify(`Deleted the reading for ${r.assetId} on ${formatDate(r.date)}.`); }}><Check size={13} /> Delete</button>
+                        <button className="mini-button danger" onClick={async () => { try { await remove(r.id); setConfirmId(null); notify(`Deleted the reading for ${r.assetId} on ${formatDate(r.date)}.`); } catch (error) { notify(error instanceof Error ? error.message : "Unable to delete monitoring record."); } }}><Check size={13} /> Delete</button>
                         <button className="mini-button" onClick={() => setConfirmId(null)}>Cancel</button>
                       </>
                     ) : <button className="row-more" onClick={() => setConfirmId(r.id)} aria-label={`Delete reading for ${r.assetId} on ${formatDate(r.date)}`}><Trash2 size={15} /></button>}
@@ -275,7 +280,7 @@ export default function MonitoringView({ department, notify }: { department: str
           </table>
           {!visible.length && <div className="empty-state">{!ready ? "Loading…" : query ? "No readings match your search." : "No readings logged yet. Use the form above to add the first one."}</div>}
         </div>
-        <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length} records <span className="demo-note">· Sample history stands in for the Excel workbook; entries are kept in this browser only</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
+        <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length} records <span className="demo-note">· Records are stored in the shared Neon database</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
       </section>
     </>
   );
