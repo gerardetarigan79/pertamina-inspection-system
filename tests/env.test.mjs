@@ -12,7 +12,7 @@ test("getDatabaseUrl rejects a missing DATABASE_URL with an actionable message",
 
 test("getDatabaseUrl returns the configured connection string", () => {
   assert.equal(
-    getDatabaseUrl({ DATABASE_URL: "  postgresql://example/db?sslmode=require  " }),
+    getDatabaseUrl({ DATABASE_URL: "  postgresql://user:pass@ep-example-pooler.region.aws.neon.tech/db?sslmode=require  " }),
     "postgresql://example/db?sslmode=require",
   );
 });
