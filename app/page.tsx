@@ -16,6 +16,7 @@ import MonitoringView from "./components/MonitoringView";
 import UnifiedInsightsView from "./components/UnifiedInsightsView";
 
 type Asset = { id: string; name: string; area: string; department: string; thickness: string; pressure: string; status: string; date: string; };
+type CurrentUser = { id: string; name: string; email: string; role: "admin" | "inspector" | "viewer"; mustChangePassword: boolean };
 
 
 const navGroups = [
@@ -25,6 +26,13 @@ const navGroups = [
 
 export default function Home() {
   const [active, setActive] = useState("Overview");
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then(response => response.ok ? response.json() : null)
+      .then(payload => { if (payload?.success) setCurrentUser(payload.user as CurrentUser); })
+      .catch(() => setCurrentUser(null));
+  }, []);
   const [assets, setAssets] = useState<Asset[]>([]);
 const [assetsLoading, setAssetsLoading] = useState(true);
 const [assetsError, setAssetsError] = useState("");
@@ -112,12 +120,13 @@ const [assetsError, setAssetsError] = useState("");
         <div className="workspace-switch"><div className="workspace-avatar">P</div><div className="workspace-copy"><strong>Pertamina Hulu Mahakam</strong><span>Inspection workspace</span></div><ChevronDown size={15}/></div>
         <div className="nav-scroll">
           {navGroups.map(group => <div className="nav-group" key={group.label}><div className="nav-label">{group.label}</div>{group.items.map(item => <button key={item.name} className={`nav-item ${active === item.name ? "active" : ""}`} onClick={() => { setActive(item.name); setSidebarOpen(false); }}><item.icon size={17}/><span>{item.name}</span>{item.name === "Data integration" && <span className="nav-dot"/>}</button>)}</div>)}
+          {currentUser?.role === "admin" && <button className="nav-item" onClick={() => window.location.assign("/admin/users")}><ShieldCheck size={17}/><span>User management</span></button>}
         </div>
         <div className="sidebar-bottom">
           <div className="system-status"><span className="status-pulse"/><div><strong>System operational</strong><small>All services running</small></div><ChevronRight size={14}/></div>
           <button className="nav-item"><Settings2 size={17}/><span>Settings</span></button>
           <button className="nav-item"><CircleHelp size={17}/><span>Help & support</span></button>
-          <div className="profile"><div className="profile-avatar">GT</div><div className="profile-copy"><strong>Gerard Tarigan</strong><span>Inspection planning</span></div><MoreHorizontal size={18}/></div>
+          <div className="profile"><div className="profile-avatar">{currentUser?.name?.slice(0, 2).toUpperCase() ?? "PH"}</div><div className="profile-copy"><strong>{currentUser?.name ?? "Signed in user"}</strong><span>{currentUser?.role ?? "Loading account"}</span></div><button className="icon-button" aria-label="Log out" title="Log out" onClick={async () => { try { await fetch("/api/auth/logout", { method: "POST" }); } finally { window.location.assign("/login"); } }}><X size={16}/></button></div>
         </div>
       </aside>
 
