@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { directViewerPayload, validWindow } from "../../lib/mock-sources";
+import { requirePermission } from "../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
 // Mock Direct Viewer endpoint: GET /api/direct-viewer?from=YYYY-MM-DD&to=YYYY-MM-DD
 export async function GET(request: Request) {
+  const authorization = await requirePermission(request, "read_workspace");
+  if (!authorization.authorized) return authorization.response;
   const params = new URL(request.url).searchParams;
   const from = params.get("from") ?? "";
   const to = params.get("to") ?? "";
