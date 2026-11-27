@@ -14,6 +14,7 @@ jobs:
     env:
       # Build/start smoke checks do not connect to the database.
       DATABASE_URL: postgresql://ci:ci@ep-ci-pooler.example.neon.tech/ci?sslmode=require
+      AUTH_SECRET: ci-only-secret-that-is-at-least-32-characters-long
 
     steps:
       - name: Check out repository

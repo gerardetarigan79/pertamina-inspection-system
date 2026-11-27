@@ -1,4 +1,4 @@
-import { isRole, type Role } from "./permissions";
+import { isRole, type Role } from "./permissions.ts";
 
 export type LoginInput = { email: string; password: string };
 

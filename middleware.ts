@@ -1,30 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AUTH_COOKIE_NAME, verifySessionCookie } from "./app/lib/auth-security";
+import { AUTH_COOKIE_NAME } from "./app/lib/auth-security";
+import { getAuthenticatedUser } from "./app/lib/auth";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const sessionCookie = request.cookies.get(AUTH_COOKIE_NAME)?.value;
-  const session = verifySessionCookie(sessionCookie, process.env.AUTH_SECRET ?? "");
+  let user;
+
+  try {
+    // Check the database-backed session on page requests too. Account deactivation
+    // and server-side session revocation therefore take effect immediately.
+    user = await getAuthenticatedUser(request);
+  } catch (error) {
+    console.error("Page session verification failed:", error);
+    return new NextResponse("Authentication service is temporarily unavailable.", { status: 503 });
+  }
 
   if (pathname === "/login") {
-    if (!session) return NextResponse.next();
-    return NextResponse.redirect(new URL(
-      session.mustChangePassword ? "/change-password" : "/",
-      request.url,
-    ));
+    if (!user) return NextResponse.next();
+    return NextResponse.redirect(new URL(user.mustChangePassword ? "/change-password" : "/", request.url));
   }
 
-  if (!session) {
+  if (!user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("returnTo", pathname);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    response.cookies.set({
+      name: AUTH_COOKIE_NAME, value: "", httpOnly: true,
+      secure: process.env.NODE_ENV === "production", sameSite: "lax",
+      path: "/", maxAge: 0, expires: new Date(0),
+    });
+    return response;
   }
 
-  if (session.mustChangePassword && pathname !== "/change-password") {
+  if (user.mustChangePassword && pathname !== "/change-password") {
     return NextResponse.redirect(new URL("/change-password", request.url));
   }
-
-  if (!session.mustChangePassword && pathname === "/change-password") {
+  if (!user.mustChangePassword && pathname === "/change-password") {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+  if (pathname.startsWith("/admin") && user.role !== "admin") {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
@@ -32,8 +46,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // API handlers perform database-backed checks themselves. This middleware
-  // provides fast page redirects using only the signed, expiring cookie.
+  // API routes perform their own database-backed authorization checks.
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
   runtime: "nodejs",
 };
