@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "../../lib/db";
+import { requirePermission } from "../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const authorization = await requirePermission(request, "read_workspace");
+  if (!authorization.authorized) return authorization.response;
   try {
     const sql = getSql();
     const department = request.nextUrl.searchParams.get("department");
@@ -27,6 +30,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authorization = await requirePermission(request, "write_inspections");
+  if (!authorization.authorized) return authorization.response;
   try {
     const body = await request.json();
     const required = ["assetId", "date", "couponId", "couponInitialG", "couponFinalG", "exposureDays", "inhibitor", "injectedL", "injectionRateLpd"];
@@ -73,6 +78,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const authorization = await requirePermission(request, "write_inspections");
+  if (!authorization.authorized) return authorization.response;
   try {
     const id = request.nextUrl.searchParams.get("id");
     if (!id || !/^\d+$/.test(id)) return NextResponse.json({ success: false, message: "A valid record ID is required." }, { status: 400 });
