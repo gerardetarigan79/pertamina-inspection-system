@@ -3,19 +3,12 @@ import { neon } from "@neondatabase/serverless";
 import { NextResponse } from "next/server";
 import { getDatabaseUrl } from "../../../lib/env";
 import { hashSessionToken } from "../../../lib/auth-security";
-import { getAuthenticatedUser, getSignedSession, requireRole, setSessionCookie } from "../../../lib/auth";
+import { getAuthenticatedUser, getSignedSession, setSessionCookie } from "../../../lib/auth";
 import { isValidNewPassword } from "../../../lib/auth-validation";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const authorization = await requireRole(request, ["admin", "inspector", "viewer"]);
-  if (!authorization.authorized) {
-    // A forced-password-change session is intentionally allowed through this endpoint.
-    if (authorization.response.status !== 403 ||
-        (await getAuthenticatedUser(request)) === null) return authorization.response;
-  }
-
   try {
     const user = await getAuthenticatedUser(request);
     const session = getSignedSession(request);
