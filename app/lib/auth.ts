@@ -94,9 +94,10 @@ export async function getAuthenticatedUser(request: Request): Promise<Authentica
 export async function requireRole(
   request: Request,
   allowedRoles: readonly Role[],
+  authenticate: (request: Request) => Promise<AuthenticatedUser | null> = getAuthenticatedUser,
 ): Promise<AuthorizationResult> {
   try {
-    const user = await getAuthenticatedUser(request);
+    const user = await authenticate(request);
     if (!user) {
       return {
         authorized: false,
@@ -147,6 +148,7 @@ export async function requireRole(
 export async function requirePermission(
   request: Request,
   permission: Permission,
+  authenticate: (request: Request) => Promise<AuthenticatedUser | null> = getAuthenticatedUser,
 ): Promise<AuthorizationResult> {
-  return requireRole(request, rolesForPermission(permission));
+  return requireRole(request, rolesForPermission(permission), authenticate);
 }
