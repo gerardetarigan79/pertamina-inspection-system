@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authorization = await requirePermission(request, "write_inspections");
+  const authorization = await requirePermission(request, "write_monitoring");
   if (!authorization.authorized) return authorization.response;
   try {
     const body = await request.json();
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const authorization = await requirePermission(request, "write_inspections");
+  const authorization = await requirePermission(request, "write_monitoring");
   if (!authorization.authorized) return authorization.response;
   try {
     const id = request.nextUrl.searchParams.get("id");
