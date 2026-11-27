@@ -13,6 +13,7 @@ import InspectionView from "./components/InspectionView";
 import AssetConditionView from "./components/AssetConditionView";
 import InspectionImport from "./components/InspectionImport";
 import MonitoringView from "./components/MonitoringView";
+import { hasPermission } from "./lib/permissions";
 import UnifiedInsightsView from "./components/UnifiedInsightsView";
 
 type Asset = { id: string; name: string; area: string; department: string; thickness: string; pressure: string; status: string; date: string; };
@@ -109,7 +110,9 @@ const [assetsError, setAssetsError] = useState("");
 
   const notify = (message: string) => { setNotice(message); window.setTimeout(() => setNotice(""), 2800); };
   const title = active === "Overview" ? "Overview" : active;
-  const canWrite = currentUser?.role === "admin" || currentUser?.role === "inspector";
+  const canWriteInspection = currentUser ? hasPermission(currentUser.role, "write_inspections") : false;
+  const canImport = currentUser ? hasPermission(currentUser.role, "import_data") : false;
+  const canWriteMonitoring = currentUser ? hasPermission(currentUser.role, "write_monitoring") : false;
   return (
     <main className="app-shell">
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
@@ -138,7 +141,7 @@ const [assetsError, setAssetsError] = useState("");
         </header>
 
         <div className="page-content">
-          <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> ASSET INTEGRITY / COMMAND CENTER</div><h1>{title === "Overview" ? <>Good afternoon, {currentUser?.name ?? "there"}<span className="wave">.</span></> : title}</h1><p className="page-subtitle">{active === "Overview" ? "A consolidated view of asset health, inspection activity, and operating conditions." : `Explore and manage ${active.toLowerCase()} across the inspection workspace.`}</p></div><div className="welcome-actions"><button className="button button-quiet" onClick={() => notify("Report export is a frontend demo for now.")}><Download size={16}/> Export report</button>{canWrite && <button className="button button-primary" onClick={() => notify("New record flow will be connected in the manual inspection phase.")}><Plus size={17}/> New record</button>}</div></div>
+          <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> ASSET INTEGRITY / COMMAND CENTER</div><h1>{title === "Overview" ? <>Good afternoon, {currentUser?.name ?? "there"}<span className="wave">.</span></> : title}</h1><p className="page-subtitle">{active === "Overview" ? "A consolidated view of asset health, inspection activity, and operating conditions." : `Explore and manage ${active.toLowerCase()} across the inspection workspace.`}</p></div><div className="welcome-actions"><button className="button button-quiet" onClick={() => notify("Report export is a frontend demo for now.")}><Download size={16}/> Export report</button>{canWriteInspection && <button className="button button-primary" onClick={() => notify("New record flow will be connected in the manual inspection phase.")}><Plus size={17}/> New record</button>}</div></div>
 
           <div className="filter-row"><div className="filter-context"><span className="live-indicator"/> LIVE WORKSPACE SNAPSHOT <span className="filter-separator">/</span> <span>Updated just now</span></div><div className="filters"><label className="select-wrap"><Filter size={14}/><select value={department} onChange={e => setDepartment(e.target.value)}><option>All departments</option><option>Pipeline</option><option>Surface Facility</option></select><ChevronDown size={13}/></label><label className="select-wrap"><CalendarDays size={14}/><select value={period} onChange={e => setPeriod(e.target.value)}><option>Last 30 days</option><option>Last 7 days</option><option>Last 90 days</option></select><ChevronDown size={13}/></label></div></div>
 
@@ -241,7 +244,7 @@ const [assetsError, setAssetsError] = useState("");
 
   </section>
 ) : active === "Production data" ? <ProductionView department={department} period={period} notify={notify}/>
-          : active === "Inspection records" ? (department === "Pipeline" ? <InspectionImport knownAssetIds={assets.map(a => a.id)} readOnly={!canWrite} onImported={n => notify(`${n} pipeline inspection records saved to Neon.`)}/> : <InspectionView department={department} period={period} notify={notify}/>)          : active === "Corrosion monitoring" ? <MonitoringView department={department} notify={notify} readOnly={!canWrite}/>
+          : active === "Inspection records" ? (department === "Pipeline" ? <InspectionImport knownAssetIds={assets.map(a => a.id)} readOnly={!canImport} onImported={n => notify(`${n} pipeline inspection records saved to Neon.`)}/> : <InspectionView department={department} period={period} notify={notify}/>)          : active === "Corrosion monitoring" ? <MonitoringView department={department} notify={notify} readOnly={!canWriteMonitoring}/>
           : active === "Asset condition" ? <AssetConditionView department={department} period={period} notify={notify} initialCondition={conditionFilter} onBack={() => setActive("Overview")}/>
           : <section className="panel placeholder-panel"><div className="placeholder-icon"><Command size={25}/></div><div className="panel-kicker">{active.toUpperCase()}</div><h2>{active} workspace</h2><p>This section is part of the frontend prototype. The dashboard currently uses illustrative sample data; workflows and backend integrations will be developed in later iterations.</p><button className="button button-primary" onClick={() => setActive("Overview")}>Back to overview</button></section>}
           <footer className="footer"><span>PHM INTELLIGENCE <span className="footer-sep">/</span> INTERNAL WORKSPACE</span><span>Frontend prototype · Sample data only</span><span>v0.1.0</span></footer>
