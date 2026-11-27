@@ -1,13 +1,12 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-
-// Next.js does not automatically load .env.local for standalone Node scripts.
-if (existsSync(".env.local")) process.loadEnvFile(".env.local");
-
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Pool } from "@neondatabase/serverless";
+
+// Next.js does not automatically load .env.local for standalone Node scripts.
+if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 const migrationsDirectory = fileURLToPath(new URL("../database/migrations/", import.meta.url));
 const connectionString = process.env.DIRECT_URL?.trim();
