@@ -28,8 +28,12 @@ let client;
 try {
   client = await pool.connect();
   await client.query("BEGIN");
+  // Serialize first-admin creation so concurrent seed invocations cannot
+  // create multiple bootstrap administrators with different email addresses.
+  await client.query("SELECT pg_advisory_xact_lock(78123457)");
+
   const existing = await client.query(
-    "SELECT id, role, is_active FROM users WHERE LOWER(email) = $1 FOR UPDATE",
+    "SELECT id, role, is_active FROM users WHERE LOWER(email) = $1 LIMIT 1 FOR UPDATE",
     [email],
   );
 
@@ -41,6 +45,13 @@ try {
     await client.query("COMMIT");
     console.log("An active administrator with this email already exists; no account or password was changed.");
   } else {
+    const admins = await client.query(
+      "SELECT id FROM users WHERE role = 'admin' AND is_active = TRUE LIMIT 1",
+    );
+    if (admins.rows.length > 0) {
+      throw new Error("An active administrator already exists with a different email. Use the admin account-management page instead of seeding another bootstrap administrator.");
+    }
+
     const inserted = await client.query(
       `INSERT INTO users (name, email, password_hash, role, is_active, must_change_password)
        VALUES ('Administrator', $1, $2, 'admin', TRUE, TRUE)
