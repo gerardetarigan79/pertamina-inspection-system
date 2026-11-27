@@ -1,27 +1,28 @@
 # PHM Intelligence — Asset Integrity Workspace
 
-A Next.js workspace for asset registration, inspection records, corrosion monitoring, and production data. The repository currently combines Neon-backed API routes with mock SAP / Direct Viewer endpoints and prototype UI areas; not every screen is connected to persisted data yet.
+A Next.js workspace for asset registration, inspection records, corrosion monitoring, production data, and user access control. The repository combines Neon-backed API routes with mock SAP / Direct Viewer endpoints and prototype UI areas; not every business workflow is connected to persisted data yet.
 
 ## Repository audit
 
-- **Language:** TypeScript (with TSX for the Next.js UI).
-- **Framework:** Next.js App Router; lockfile resolves Next.js 15.5.29, React 19.3.1, and TypeScript 5.9.3.
-- **Database client:** `@neondatabase/serverless` 1.2.1 using tagged-template SQL; there is no ORM.
-- **Database:** Neon PostgreSQL; API routes read `DATABASE_URL`.
-- **Authentication:** none is implemented in the current repository.
-- **UI:** React, custom CSS, and Lucide React icons; no component-library dependency.
-- **Deployment:** the repository is configured as a Vercel-hosted Next.js project (the repository homepage points to the Vercel deployment); there is no committed `vercel.json`.
-- **Package manager:** npm, with the committed `package-lock.json`.
+- **Language:** TypeScript / TSX.
+- **Framework:** Next.js App Router 15.5.29 (resolved in the lockfile), React 19.3.1, TypeScript 5.9.3.
+- **Database client:** `@neondatabase/serverless` 1.2.1 using parameterized SQL; no ORM.
+- **Database:** Neon PostgreSQL.
+- **Authentication:** email/password, bcrypt password hashes, signed HTTP-only session cookies, and revocable sessions stored in Neon.
+- **Roles:** `admin`, `inspector`, and `viewer`, mapped centrally in `app/lib/permissions.ts`.
+- **UI:** React, custom CSS, and Lucide React icons.
+- **Deployment:** Vercel-hosted Next.js; no custom `vercel.json` is required.
+- **Package manager:** npm with the committed `package-lock.json`.
 
-## Setup from scratch
-
-### Requirements
+## Requirements
 
 - Node.js **22.16.x** (see `.nvmrc` and `package.json`).
 - npm 10.x.
-- A Neon PostgreSQL database for routes that query persisted data.
+- A Neon PostgreSQL database.
 
-### Install and configure
+## Setup from scratch
+
+### Install dependencies
 
 ```bash
 nvm install
@@ -29,7 +30,9 @@ nvm use
 npm ci
 ```
 
-Copy the environment template to a local-only file and put your **pooled Neon connection string** in `DATABASE_URL`. The hostname should contain `-pooler` and the URL must include `?sslmode=require`.
+### Configure local environment
+
+Copy the template to a local-only environment file.
 
 macOS / Linux:
 
@@ -43,9 +46,54 @@ Windows PowerShell:
 Copy-Item .env.example .env.local
 ```
 
-The server validates `DATABASE_URL` at startup and displays a clear error if it is missing.
+Set these values in `.env.local`:
 
-### Verify and run
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Pooled Neon URL for application requests. The hostname should contain `-pooler`; include `?sslmode=require`. |
+| `AUTH_SECRET` | Random secret of at least 32 characters for session-cookie signatures and rate-limit key hashing. |
+| `DIRECT_URL` | Direct (non-pooler) Neon URL for migrations and one-time admin seeding. Include `?sslmode=require`. |
+| `SEED_ADMIN_EMAIL` | Email address for the first administrator, used only by the seed command. |
+| `SEED_ADMIN_PASSWORD` | Temporary first-admin password, at least 12 characters and no more than 72 UTF-8 bytes. Used only by the seed command. |
+
+Generate an authentication secret with:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"
+```
+
+The application validates `DATABASE_URL` and `AUTH_SECRET` at startup. Do not commit `.env`, `.env.local`, or any real credentials.
+
+### Initialize the database
+
+Back up an existing Neon database before applying schema changes. Then use the **direct** connection URL for the migration and seed commands:
+
+macOS / Linux:
+
+```bash
+export DIRECT_URL='postgresql://USER:PASSWORD@ep-example.REGION.aws.neon.tech/DBNAME?sslmode=require'
+npm run db:migrate
+export SEED_ADMIN_EMAIL='admin@example.com'
+read -s SEED_ADMIN_PASSWORD
+export SEED_ADMIN_PASSWORD
+npm run db:seed-admin
+unset SEED_ADMIN_PASSWORD
+```
+
+Windows PowerShell:
+
+```powershell
+$env:DIRECT_URL = 'postgresql://USER:PASSWORD@ep-example.REGION.aws.neon.tech/DBNAME?sslmode=require'
+npm run db:migrate
+$env:SEED_ADMIN_EMAIL = 'admin@example.com'
+$env:SEED_ADMIN_PASSWORD = Read-Host 'Temporary admin password'
+npm run db:seed-admin
+Remove-Item Env:SEED_ADMIN_PASSWORD
+```
+
+The seed command creates an initial `admin` account that must change its temporary password on first login. If an account with that email already exists, the script does not change its role or password.
+
+### Run checks and start
 
 ```bash
 npm run lint
@@ -55,42 +103,51 @@ npm run build
 npm run start
 ```
 
-For development, use `npm run dev` instead of `npm run start`.
+For development, use `npm run dev`.
 
-## Environment variables
+## Authentication and roles
 
-| Variable | Purpose | Where to set it |
-| --- | --- | --- |
-| `DATABASE_URL` | Required pooled Neon PostgreSQL URL for runtime API requests; include `sslmode=require`. | `.env.local`; Vercel Project Settings → Environment Variables for **Production** and **Preview**. Use a separate Neon branch URL for Preview where available. |
+- Sign in at `/login`.
+- The first sign-in with a temporary password redirects to `/change-password`.
+- Sessions expire after eight hours. Session tokens are random and only their SHA-256 hashes are stored in the database.
+- The browser cookie is HTTP-only, SameSite=Lax, and Secure in production.
+- Logout deletes the current session record and clears the cookie.
+- The server checks the active user and current role on every protected API request. Deactivating an account deletes its sessions.
+- `admin`: all permissions, including account management.
+- `inspector`: workspace read access and inspection write endpoints.
+- `viewer`: read-only workspace access.
+- Admins manage accounts at `/admin/users`. The API prevents removing the last active admin.
 
-Do not commit `.env`, `.env.local`, or any real connection string. The CI workflow uses a placeholder URL and does not connect to Neon.
+Login failures use a generic credential message. Repeated failures are limited by IP and by per-account temporary lockout.
 
-## Deployment (Vercel)
+## Vercel deployment
 
-Vercel should detect the existing Next.js app automatically. Keep the standard Next.js settings:
+Vercel should detect the existing Next.js app automatically. Keep the standard settings:
 
 - Install command: `npm ci`
 - Build command: `npm run build`
-- Output directory: leave the Next.js default (`.next`)
-- Runtime: Node.js 22.16.x
-- Environment: set `DATABASE_URL` for Production and Preview
+- Output directory: default Next.js output (`.next`)
+- Node.js runtime: 22.16.x
+- Production environment variables: `DATABASE_URL` (pooled Neon URL) and `AUTH_SECRET`
+- Preview environment variables: `DATABASE_URL` (prefer a separate Neon branch) and `AUTH_SECRET`
 
-No custom Vercel configuration file is currently present in the repository.
+`DIRECT_URL`, `SEED_ADMIN_EMAIL`, and `SEED_ADMIN_PASSWORD` are only needed in the trusted shell where database migrations or the one-time seed are run. Do not put the seed password in Vercel.
 
-## Database bootstrap status — action required before a clean Neon database can be initialized
+The CI workflow uses dummy database/auth values for build and server-start checks; it does not connect to Neon.
 
-The repository currently has two SQL files under `database/migrations`, but it does **not** yet have a migration runner or a seed script.
+## Database migrations
 
-There is also a dependency gap in the existing migrations: `001_unified_asset_register.sql` creates `assets` and then adds foreign keys to `production_readings`, `inspection_records`, and `pipeline_inspections`, but this repository does not contain migrations that create those three prerequisite tables. `002_corrosion_monitoring.sql` depends on `assets`. Therefore the committed migrations cannot currently initialize an empty database from scratch.
+Migrations run in filename order through `npm run db:migrate` and are tracked with SHA-256 checksums in `schema_migrations`. Applied migration files must not be edited; create a new migration instead.
 
-The repository also has no users table or authentication implementation. An admin seed cannot safely be written until the user/authentication schema and password-hashing approach are agreed in Phase 1. Do not treat the existing migration files as a complete fresh-database bootstrap, and do not run them against production as a substitute for a reviewed baseline migration.
+- `000_source_tables.sql`: creates the source tables used by the existing API handlers when absent.
+- `001_unified_asset_register.sql`: creates the asset register and its source-table foreign keys.
+- `002_corrosion_monitoring.sql`: creates corrosion coupon and inhibitor monitoring.
+- `003_authentication.sql`: creates users, sessions, and persistent login rate-limit storage.
 
-**Needed to finish database bootstrap:** obtain the canonical schema (or a schema-only export) from the current Neon database for the three source tables, confirm whether existing data must be preserved, and then add a baseline migration plus an ordered migration runner and a seed command in the appropriate phase.
+**Existing database warning:** migration 001 can fail if source rows already exist with asset IDs that are not in `assets`. Resolve those rows with the data owner before applying the migration. The baseline uses `CREATE TABLE IF NOT EXISTS`; it does not alter an existing table definition to match the new baseline. Compare the existing Neon schema with the repository migrations before applying them to an established production database.
 
 ## Current implementation notes
 
 - `app/api/assets`, `inspections`, `monitoring`, `pipeline-inspections`, and `production` contain Neon-backed handlers.
 - `app/api/sap` and `app/api/direct-viewer` return deterministic mock data.
-- Authentication and role-based authorization are not yet implemented; these are Phase 1 work.
-- `database/migrations` contains incremental SQL only; see the bootstrap limitation above.
 - Dashboard values and mock source records are illustrative and must not be interpreted as live Pertamina operational data.
