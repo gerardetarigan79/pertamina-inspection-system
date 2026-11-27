@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: NextRequest) {
-  const authorization = await requirePermission(request, "write_inspections");
+  const authorization = await requirePermission(request, "import_data");
   if (!authorization.authorized) return authorization.response;
   try {
     const body = await request.json();
