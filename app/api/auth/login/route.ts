@@ -35,8 +35,8 @@ export async function POST(request: Request) {
 
     const secret = getAuthSecret();
     const sql = neon(getDatabaseUrl());
-    const ipAddress = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-      || request.headers.get("x-real-ip")
+    const ipAddress = request.headers.get("x-real-ip")
+      || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || "unknown";
     const rateLimitKey = hashRateLimitKey(`login:${ipAddress}`, secret);
     const rateLimits = await sql`
