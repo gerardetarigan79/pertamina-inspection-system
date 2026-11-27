@@ -4,15 +4,29 @@ export type Role = (typeof ROLES)[number];
 export const PERMISSIONS = [
   "read_workspace",
   "write_inspections",
+  "import_data",
+  "write_monitoring",
+  "review_alerts",
+  "manage_work_programs",
   "manage_users",
   "view_system_health",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
-/** Single role-to-permission map; keep all policy changes centralized here. */
+/**
+ * Single role-to-permission map. Future alert/work-program APIs should call
+ * requirePermission with their capability instead of comparing role strings.
+ */
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   admin: PERMISSIONS,
-  inspector: ["read_workspace", "write_inspections"],
+  inspector: [
+    "read_workspace",
+    "write_inspections",
+    "import_data",
+    "write_monitoring",
+    "review_alerts",
+    "manage_work_programs",
+  ],
   viewer: ["read_workspace"],
 };
 
