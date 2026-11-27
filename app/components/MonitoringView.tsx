@@ -34,7 +34,7 @@ function Field({ label, error, hint, children, htmlFor, required }: { label: str
   );
 }
 
-export default function MonitoringView({ department, notify }: { department: string; notify: (m: string) => void }) {
+export default function MonitoringView({ department, notify, readOnly = false }: { department: string; notify: (m: string) => void; readOnly?: boolean }) {
   const { records, ready, add, remove } = useMonitoringStore();
   const insp = useInspectionSource(notify);
   const uid = useId().replace(/:/g, "");
@@ -136,7 +136,7 @@ export default function MonitoringView({ department, notify }: { department: str
 
   return (
     <>
-      <section className="panel form-panel">
+      {!readOnly && <section className="panel form-panel">
         <div className="panel-heading">
           <div><div className="panel-kicker">NEW READING</div><h2>Log a corrosion monitoring reading</h2><p>Coupon weights and inhibitor injection in one validated form, replacing the standalone Excel entry (US-08)</p></div>
           <span className="source-count">REQUIRED *</span>
@@ -202,7 +202,7 @@ export default function MonitoringView({ department, notify }: { department: str
             <button type="submit" className="button button-primary"><Plus size={16} /> Save record</button>
           </div>
         </form>
-      </section>
+      </section>}
 
       <div className="metric-grid">
         <div className="metric-card"><div className="metric-top"><span>Monitoring records</span><span className="metric-icon blue"><Database size={18} /></span></div><div className="metric-value">{scoped.length}</div><div className="metric-change">{scoped.filter(r => r.source === "Form").length} added through the form</div></div>
@@ -245,7 +245,7 @@ export default function MonitoringView({ department, notify }: { department: str
               </div>
             </div>
           </>
-        ) : <div className="empty-state">{ready ? "No monitoring readings for this department. Log one with the form above." : "Loading…"}</div>}
+        ) : <div className="empty-state">{ready ? (readOnly ? "No monitoring readings for this department." : "No monitoring readings for this department. Log one with the form above.") : "Loading…"}</div>}
       </section>
 
       <section className="panel table-panel">
@@ -268,17 +268,17 @@ export default function MonitoringView({ department, notify }: { department: str
                   <td>{r.inhibitor || "—"}</td><td className="numeric">{fmt(r.injectedL, 1)}</td><td className="numeric">{fmt(r.injectionRateLpd, 1)}</td>
                   <td><span className={`discipline-tag ${r.source === "Form" ? "tag-new" : ""}`}>{r.source}</span></td>
                   <td className="row-actions">
-                    {confirmId === r.id ? (
+                    {!readOnly && (confirmId === r.id ? (
                       <>
                         <button className="mini-button danger" onClick={async () => { try { await remove(r.id); setConfirmId(null); notify(`Deleted the reading for ${r.assetId} on ${formatDate(r.date)}.`); } catch (error) { notify(error instanceof Error ? error.message : "Unable to delete monitoring record."); } }}><Check size={13} /> Delete</button>
                         <button className="mini-button" onClick={() => setConfirmId(null)}>Cancel</button>
                       </>
-                    ) : <button className="row-more" onClick={() => setConfirmId(r.id)} aria-label={`Delete reading for ${r.assetId} on ${formatDate(r.date)}`}><Trash2 size={15} /></button>}
+                    ) : <button className="row-more" onClick={() => setConfirmId(r.id)} aria-label={`Delete reading for ${r.assetId} on ${formatDate(r.date)}`}><Trash2 size={15} /></button>)}
                   </td>
                 </tr>); })}
             </tbody>
           </table>
-          {!visible.length && <div className="empty-state">{!ready ? "Loading…" : query ? "No readings match your search." : "No readings logged yet. Use the form above to add the first one."}</div>}
+          {!visible.length && <div className="empty-state">{!ready ? "Loading…" : query ? "No readings match your search." : (readOnly ? "No readings logged yet." : "No readings logged yet. Use the form above to add the first one.")}</div>}
         </div>
         <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length} records <span className="demo-note">· Records are stored in the shared Neon database</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
       </section>
