@@ -1,6 +1,25 @@
-node_modules/
-.next/
-out/
+# Dependencies
+/node_modules/
+
+# Next.js build output
+/.next/
+/out/
+/build/
+
+# Local environment files (keep the example template tracked)
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel/
+
+# Local uploads and test output
+/uploads/
+/public/uploads/
+/coverage/
+/test-results/
+
+# TypeScript and logs
 *.tsbuildinfo
-.env*.local
-.vercel
+*.log
