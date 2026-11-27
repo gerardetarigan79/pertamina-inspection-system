@@ -1,8 +1,8 @@
 import { neon } from "@neondatabase/serverless";
 import { NextResponse } from "next/server";
-import { requirePermission } from "../../../../../lib/auth";
-import { getDatabaseUrl } from "../../../../../lib/env";
-import { parseUpdateUserInput } from "../../../../../lib/auth-validation";
+import { requirePermission } from "../../../../lib/auth";
+import { getDatabaseUrl } from "../../../../lib/env";
+import { parseUpdateUserInput } from "../../../../lib/auth-validation";
 
 export const dynamic = "force-dynamic";
 

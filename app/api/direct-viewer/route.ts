@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { directViewerPayload, validWindow } from "../../lib/mock-sources";
-import { requirePermission } from "../../../lib/auth";
+import { requirePermission } from "../../lib/auth";
 
 export const dynamic = "force-dynamic";
 

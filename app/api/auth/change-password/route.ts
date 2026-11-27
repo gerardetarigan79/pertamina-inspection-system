@@ -1,10 +1,10 @@
 import bcrypt from "bcryptjs";
 import { neon } from "@neondatabase/serverless";
 import { NextResponse } from "next/server";
-import { getDatabaseUrl } from "../../../../lib/env";
-import { hashSessionToken } from "../../../../lib/auth-security";
-import { getAuthenticatedUser, getSignedSession, requireRole, setSessionCookie } from "../../../../lib/auth";
-import { isValidNewPassword } from "../../../../lib/auth-validation";
+import { getDatabaseUrl } from "../../../lib/env";
+import { hashSessionToken } from "../../../lib/auth-security";
+import { getAuthenticatedUser, getSignedSession, requireRole, setSessionCookie } from "../../../lib/auth";
+import { isValidNewPassword } from "../../../lib/auth-validation";
 
 export const dynamic = "force-dynamic";
 
