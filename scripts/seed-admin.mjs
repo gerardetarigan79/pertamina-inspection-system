@@ -1,10 +1,9 @@
 import bcrypt from "bcryptjs";
 import { existsSync } from "node:fs";
+import { Pool } from "@neondatabase/serverless";
 
 // Next.js does not automatically load .env.local for standalone Node scripts.
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
-
-import { Pool } from "@neondatabase/serverless";
 
 const connectionString = process.env.DIRECT_URL?.trim();
 const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
