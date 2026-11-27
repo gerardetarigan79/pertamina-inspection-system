@@ -11,14 +11,17 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test"
+    "test": "node --experimental-strip-types --test",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:seed-admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.1",
     "lucide-react": "^0.468.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "bcryptjs": "^3.0.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",

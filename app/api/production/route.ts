@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "../../lib/db";
+import { requirePermission } from "../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const authorization = await requirePermission(request, "read_workspace");
+  if (!authorization.authorized) return authorization.response;
   try {
     const sql = getSql();
     const department = request.nextUrl.searchParams.get("department");

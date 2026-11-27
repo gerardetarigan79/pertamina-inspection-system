@@ -1,9 +1,7 @@
-import { getDatabaseUrl } from "./app/lib/env";
+import { getAuthSecret, getDatabaseUrl } from "./app/lib/env";
 
-/**
- * Validate server configuration when the Next.js server starts.
- * CI supplies a placeholder URL for build/start smoke checks; no DB request is made.
- */
+/** Validate runtime configuration before the Next.js server accepts requests. */
 export async function register() {
   getDatabaseUrl();
+  getAuthSecret();
 }

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "../../lib/db";
+import { requirePermission } from "../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authorization = await requirePermission(request, "read_workspace");
+  if (!authorization.authorized) return authorization.response;
   try {
     const sql = getSql();
     const rows = await sql`
@@ -23,6 +26,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const authorization = await requirePermission(request, "import_data");
+  if (!authorization.authorized) return authorization.response;
   try {
     const body = await request.json();
     if (!Array.isArray(body.records) || body.records.length === 0) {
