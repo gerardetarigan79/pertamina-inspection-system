@@ -30,7 +30,7 @@ export default function LoginPage() {
 
       const params = new URLSearchParams(window.location.search);
       const returnTo = params.get("returnTo") ?? "/";
-      const safeReturnTo = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/";
+      const safeReturnTo = returnTo.startsWith("/") && !returnTo.startsWith("//") && !returnTo.includes("\\") ? returnTo : "/";
       router.replace(payload.mustChangePassword ? "/change-password" : safeReturnTo);
       router.refresh();
     } catch {
