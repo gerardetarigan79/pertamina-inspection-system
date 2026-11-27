@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Install, lint, type-check, test, build, and start
+    runs-on: ubuntu-latest
+    env:
+      # Build/start smoke checks do not connect to the database.
+      DATABASE_URL: postgresql://ci:ci@ep-ci-pooler.example.neon.tech/ci?sslmode=require
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Test
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Production server smoke test
+        shell: bash
+        run: |
+          npm run start -- --hostname 127.0.0.1 > /tmp/next-start.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000 > /dev/null; then
+              echo "Production server responded successfully."
+              exit 0
+            fi
+
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              cat /tmp/next-start.log
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          cat /tmp/next-start.log
+          echo "Production server did not become ready within 30 seconds."
+          exit 1

@@ -2,11 +2,16 @@
   "name": "pertamina-inspection-system",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.16.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.1",
@@ -16,6 +21,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
