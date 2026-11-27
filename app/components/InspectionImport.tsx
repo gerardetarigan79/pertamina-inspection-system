@@ -6,6 +6,7 @@ import { validateInspectionCsv, type CleanRecord, type ParseResult, type RowStat
 type Props = {
   knownAssetIds: string[]; // from the asset register
   onImported?: (count: number, records: CleanRecord[]) => void;
+  readOnly?: boolean;
 };
 
 const PILL: Record<RowStatus, { cls: string; label: string }> = {
@@ -14,7 +15,7 @@ const PILL: Record<RowStatus, { cls: string; label: string }> = {
   error: { cls: "critical", label: "Error" },
 };
 
-export default function InspectionImport({ knownAssetIds, onImported }: Props) {
+export default function InspectionImport({ knownAssetIds, onImported, readOnly = false }: Props) {
   const [fileName, setFileName] = useState("");
   const [result, setResult] = useState<ParseResult | null>(null);
   const [filter, setFilter] = useState<"all" | RowStatus>("all");
@@ -83,16 +84,20 @@ export default function InspectionImport({ knownAssetIds, onImported }: Props) {
           </a>
         </div>
 
-        <label
-          className="dropzone"
-          onDragOver={e => e.preventDefault()}
-          onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); }}
-        >
-          <Upload size={22} />
-          <strong>{fileName || "Click to choose a CSV file, or drop it here"}</strong>
-          <small>Columns: asset_id, inspection_date, method, measured_thickness, thickness_unit, pressure, pressure_unit, inspector, remarks</small>
-          <input ref={inputRef} type="file" accept=".csv,text/csv" hidden onChange={e => handleFile(e.target.files?.[0])} />
-        </label>
+        {readOnly ? (
+          <p className="auth-hint">Your account has read-only access. CSV import is available to inspectors and administrators.</p>
+        ) : (
+          <label
+            className="dropzone"
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); }}
+          >
+            <Upload size={22} />
+            <strong>{fileName || "Click to choose a CSV file, or drop it here"}</strong>
+            <small>Columns: asset_id, inspection_date, method, measured_thickness, thickness_unit, pressure, pressure_unit, inspector, remarks</small>
+            <input ref={inputRef} type="file" accept=".csv,text/csv" hidden onChange={e => handleFile(e.target.files?.[0])} />
+          </label>
+        )}
 
         {result?.fileErrors.map(msg => <div className="import-error" key={msg}>{msg}</div>)}
       </section>
@@ -107,9 +112,9 @@ export default function InspectionImport({ knownAssetIds, onImported }: Props) {
             </div>
             <div className="welcome-actions">
               <button className="button button-quiet" onClick={reset}><X size={15} /> Clear</button>
-              <button className="button button-primary" disabled={importable.length === 0} onClick={doImport}>
+              {!readOnly && <button className="button button-primary" disabled={importable.length === 0} onClick={doImport}>
                 <FileSpreadsheet size={16} /> Import {importable.length} valid row{importable.length === 1 ? "" : "s"}
-              </button>
+              </button>}
             </div>
           </div>
 
