@@ -124,7 +124,7 @@ const [assetsError, setAssetsError] = useState("");
         <div className="workspace-switch"><div className="workspace-avatar">P</div><div className="workspace-copy"><strong>Pertamina Hulu Mahakam</strong><span>Inspection workspace</span></div><ChevronDown size={15}/></div>
         <div className="nav-scroll">
           {navGroups.map(group => <div className="nav-group" key={group.label}><div className="nav-label">{group.label}</div>{group.items.map(item => <button key={item.name} className={`nav-item ${active === item.name ? "active" : ""}`} onClick={() => { setActive(item.name); setSidebarOpen(false); }}><item.icon size={17}/><span>{item.name}</span>{item.name === "Data integration" && <span className="nav-dot"/>}</button>)}</div>)}
-          {currentUser?.role === "admin" && <button className="nav-item" onClick={() => window.location.assign("/admin/users")}><ShieldCheck size={17}/><span>User management</span></button>}
+          {currentUser && hasPermission(currentUser.role, "manage_users") && <button className="nav-item" onClick={() => window.location.assign("/admin/users")}><ShieldCheck size={17}/><span>User management</span></button>}
         </div>
         <div className="sidebar-bottom">
           <div className="system-status"><span className="status-pulse"/><div><strong>System operational</strong><small>All services running</small></div><ChevronRight size={14}/></div>
