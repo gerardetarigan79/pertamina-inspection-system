@@ -7,7 +7,7 @@ import { clearSessionCookie, getSignedSession } from "../../../lib/auth";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const response = NextResponse.json({ success: true });
+  let response = NextResponse.json({ success: true });
   try {
     const session = getSignedSession(request);
     if (session) {
@@ -15,8 +15,11 @@ export async function POST(request: Request) {
       await sql`DELETE FROM user_sessions WHERE token_hash = ${hashSessionToken(session.token)}`;
     }
   } catch (error) {
-    // Clear the browser cookie even when the database is temporarily unavailable.
     console.error("Logout session cleanup failed:", error);
+    response = NextResponse.json(
+      { success: false, message: "The browser session was cleared, but the server could not revoke the session. Retry when the database is available." },
+      { status: 503 },
+    );
   }
 
   clearSessionCookie(response);
