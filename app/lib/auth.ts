@@ -1,14 +1,14 @@
 import { neon } from "@neondatabase/serverless";
 import { NextResponse } from "next/server";
-import { getAuthSecret, getDatabaseUrl } from "./env";
+import { getAuthSecret, getDatabaseUrl } from "./env.ts";
 import {
   AUTH_COOKIE_NAME,
   createSignedSessionCookie,
   hashSessionToken,
   readCookie,
   verifySessionCookie,
-} from "./auth-security";
-import { rolesForPermission, type Permission, type Role } from "./permissions";
+} from "./auth-security.ts";
+import { rolesForPermission, type Permission, type Role } from "./permissions.ts";
 
 export type AuthenticatedUser = {
   id: string;
