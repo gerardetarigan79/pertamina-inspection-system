@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME } from "./app/lib/auth-security";
 import { getAuthenticatedUser } from "./app/lib/auth";
+import { hasPermission } from "./app/lib/permissions";
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -38,7 +39,7 @@ export async function middleware(request: NextRequest) {
   if (!user.mustChangePassword && pathname === "/change-password") {
     return NextResponse.redirect(new URL("/", request.url));
   }
-  if (pathname.startsWith("/admin") && user.role !== "admin") {
+  if (pathname.startsWith("/admin") && !hasPermission(user.role, "manage_users")) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
