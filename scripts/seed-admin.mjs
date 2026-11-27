@@ -1,11 +1,20 @@
 import bcrypt from "bcryptjs";
+import { existsSync } from "node:fs";
+
+// Next.js does not automatically load .env.local for standalone Node scripts.
+if (existsSync(".env.local")) process.loadEnvFile(".env.local");
+
 import { Pool } from "@neondatabase/serverless";
 
 const connectionString = process.env.DIRECT_URL?.trim();
 const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
 const password = process.env.SEED_ADMIN_PASSWORD;
 
-if (!connectionString) throw new Error("DIRECT_URL is required to seed the first administrator.");
+if (!connectionString) throw new Error("DIRECT_URL is required to seed the first administrator. Set it in .env.local or the shell environment.");
+const directUrl = new URL(connectionString);
+if (directUrl.searchParams.get("sslmode") !== "require" || directUrl.hostname.includes("-pooler")) {
+  throw new Error("DIRECT_URL must be a direct (non-pooler) Neon PostgreSQL URL with sslmode=require.");
+}
 if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
   throw new Error("SEED_ADMIN_EMAIL must contain a valid email address.");
 }

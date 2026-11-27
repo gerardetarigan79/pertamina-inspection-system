@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+
+// Next.js does not automatically load .env.local for standalone Node scripts.
+if (existsSync(".env.local")) process.loadEnvFile(".env.local");
+
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,7 +13,11 @@ const migrationsDirectory = fileURLToPath(new URL("../database/migrations/", imp
 const connectionString = process.env.DIRECT_URL?.trim();
 
 if (!connectionString) {
-  throw new Error("DIRECT_URL is required for migrations. Use the direct Neon connection string (without -pooler) and include sslmode=require.");
+  throw new Error("DIRECT_URL is required for migrations. Set it in .env.local or the shell environment.");
+}
+const directUrl = new URL(connectionString);
+if (directUrl.searchParams.get("sslmode") !== "require" || directUrl.hostname.includes("-pooler")) {
+  throw new Error("DIRECT_URL must be a direct (non-pooler) Neon PostgreSQL URL with sslmode=require.");
 }
 
 const pool = new Pool({

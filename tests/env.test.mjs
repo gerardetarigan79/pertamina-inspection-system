@@ -16,3 +16,18 @@ test("getDatabaseUrl returns the configured connection string", () => {
     "postgresql://example/db?sslmode=require",
   );
 });
+
+test("getDatabaseUrl requires a pooled Neon URL with SSL", () => {
+  assert.equal(
+    getDatabaseUrl({ DATABASE_URL: "postgresql://user:pass@ep-test-pooler.region.aws.neon.tech/db?sslmode=require" }),
+    "postgresql://user:pass@ep-test-pooler.region.aws.neon.tech/db?sslmode=require",
+  );
+  assert.throws(
+    () => getDatabaseUrl({ DATABASE_URL: "postgresql://user:pass@ep-test.region.aws.neon.tech/db?sslmode=require" }),
+    /pooled Neon hostname/,
+  );
+  assert.throws(
+    () => getDatabaseUrl({ DATABASE_URL: "postgresql://user:pass@ep-test-pooler.region.aws.neon.tech/db" }),
+    /sslmode=require/,
+  );
+});
