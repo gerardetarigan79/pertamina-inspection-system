@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, Info } from "lucide-react";
 import { CONDITIONS, CONDITION_RULE, SEVERITY, buildAssetConditions, type Condition } from "../lib/condition";
 import { formatDate, periodStart } from "../lib/dates";
+import type { RegisteredAsset } from "../lib/types";
 import { PARAMS, type ParamKey } from "../lib/params";
 import { useInspectionSource, useProductionSource } from "../lib/useSources";
 import LineChart from "./LineChart";
@@ -16,20 +17,21 @@ function Pill({ condition }: { condition: Condition }) {
   return <span className={`status-pill cond-pill ${pillClass(condition)}`}><i />{condition}</span>;
 }
 
-type Props = { department: string; period: string; notify: (m: string) => void; initialCondition: string; onBack: () => void };
+type Props = { assets: RegisteredAsset[]; assetsLoading: boolean; assetsError: string; department: string; period: string; notify: (m: string) => void; initialCondition: string; onBack: () => void };
 
-export default function AssetConditionView({ department, period, notify, initialCondition, onBack }: Props) {
+export default function AssetConditionView({ assets: registeredAssets, assetsLoading, assetsError, department, period, notify, initialCondition, onBack }: Props) {
   const insp = useInspectionSource(notify);
   const prod = useProductionSource(notify);
   const [filter, setFilter] = useState<string>(initialCondition);
   const [pick, setPick] = useState("");
   const [param, setParam] = useState<ParamKey>("pressure");
 
-  const loading = !insp.ready || !prod.ready || ((insp.syncing || prod.syncing) && !insp.state.result);
+  const loading = assetsLoading || !insp.ready || !prod.ready || insp.syncing || prod.syncing;
+  const sourceError = insp.error || prod.error;
 
   const assets = useMemo(
-    () => buildAssetConditions(insp.state.records).filter(a => department === "All departments" || a.asset.department === department),
-    [insp.state.records, department],
+    () => buildAssetConditions(insp.state.records, registeredAssets).filter(a => department === "All departments" || a.asset.department === department),
+    [insp.state.records, registeredAssets, department],
   );
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -64,13 +66,14 @@ export default function AssetConditionView({ department, period, notify, initial
     <>
       <button className="back-link" onClick={onBack}><ArrowLeft size={14} /> Back to overview</button>
 
+      {assetsError && <div className="sync-error" role="alert">{assetsError}</div>}
+      {sourceError && <div className="sync-error" role="alert">Unable to load inspection or production records from Neon: {sourceError}</div>}
       <div className="rule-note">
         <Info size={15} />
         <div>
-          <strong>How condition is derived (prototype assumption, to be confirmed with Mr. WLT)</strong>
+          <strong>Condition screening logic (provisional; requires engineering approval)</strong>
           <span>
-            Worst wall loss at the latest inspection: Healthy &lt; {CONDITION_RULE.monitoring}% · Monitoring {CONDITION_RULE.monitoring}–{CONDITION_RULE.attention}% · Attention {CONDITION_RULE.attention}–{CONDITION_RULE.critical}% · Critical ≥ {CONDITION_RULE.critical}%.
-            Pipelines show “No data” until pipeline inspection records are integrated (US-04). The counts on the Overview donut are illustrative; this page is computed from the {assets.length} registered assets with imported data.
+            Worst wall loss at the latest available inspection: Healthy &lt; {CONDITION_RULE.monitoring}% · Monitoring {CONDITION_RULE.monitoring}–{CONDITION_RULE.attention}% · Attention {CONDITION_RULE.attention}–{CONDITION_RULE.critical}% · Critical ≥ {CONDITION_RULE.critical}%. These thresholds are provisional and require engineering approval. This view uses the {registeredAssets.length} assets currently returned by Neon. Pipeline inspection records are not included in the SAP inspection endpoint.
           </span>
         </div>
       </div>
@@ -119,7 +122,7 @@ export default function AssetConditionView({ department, period, notify, initial
           </div>
 
           {selected.condition === "No data" ? (
-            <div className="rule-note inline"><Info size={15} /><div><span>No inspection records for this asset yet. {selected.asset.department === "Pipeline" ? "Pipeline inspection data comes from the pipeline database (US-04)." : "Sync SAP to import them."}</span></div></div>
+            <div className="rule-note inline"><Info size={15} /><div><span>No inspection records are currently available for this asset in the Neon inspection dataset. {selected.asset.department === "Pipeline" ? "Pipeline inspection imports are stored separately and are not yet mapped into this condition calculation." : "The SAP PM connector is not configured; no simulated inspection records are used."}</span></div></div>
           ) : (
             <>
               <div className="stat-strip">

@@ -13,6 +13,7 @@ export async function GET() {
              p.operating_pressure_bar AS "pressureBar", p.inspector,
              p.remarks, p.source_system AS source
       FROM pipeline_inspections p
+      JOIN assets a ON a.asset_id = p.asset_id
       ORDER BY p.inspection_date DESC, p.asset_id
     `;
     return NextResponse.json({ success: true, count: rows.length, records: rows });

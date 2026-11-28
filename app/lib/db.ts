@@ -9,7 +9,7 @@ export function getSql() {
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
-    throw new Error("DATABASE_URL is not configured. Add it to the Vercel project environment variables.");
+    throw new Error("DATABASE_URL is not configured for this environment.");
   }
 
   return neon(databaseUrl);

@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
             asset_id,
             asset_name,
             asset_type,
+            to_jsonb(a)->>'material_type' AS material_type,
             area,
             department,
             nominal_thickness,
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
             condition,
             last_inspection_date,
             is_sample
-          FROM assets
+          FROM assets a
           WHERE department = ${department}
           ORDER BY asset_id
         `
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
             asset_id,
             asset_name,
             asset_type,
+            to_jsonb(a)->>'material_type' AS material_type,
             area,
             department,
             nominal_thickness,
@@ -48,7 +50,7 @@ export async function GET(request: NextRequest) {
             condition,
             last_inspection_date,
             is_sample
-          FROM assets
+          FROM assets a
           ORDER BY asset_id
         `;
 

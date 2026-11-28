@@ -5,7 +5,7 @@ import { Activity, ChevronDown, Database, Droplets, Gauge, Search, X } from "luc
 import { getAsset } from "../lib/assets";
 import { formatDate, periodStart } from "../lib/dates";
 import { PARAMS, type ParamKey } from "../lib/params";
-import type { ProductionRecord } from "../lib/types";
+import type { ProductionRecord, RegisteredAsset } from "../lib/types";
 import { useProductionSource } from "../lib/useSources";
 import LineChart from "./LineChart";
 import Pager from "./Pager";
@@ -15,7 +15,7 @@ const PAGE_SIZE = 12;
 
 const fmt = (n: number, d: number) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 
-export default function ProductionView({ department, period, notify }: { department: string; period: string; notify: (m: string) => void }) {
+export default function ProductionView({ assets, department, period, notify }: { assets: RegisteredAsset[]; department: string; period: string; notify: (m: string) => void }) {
   const { state, ready, syncing, error, sync } = useProductionSource(notify);
   const [param, setParam] = useState<ParamKey>("pressure");
   const [assetPick, setAssetPick] = useState("");
@@ -24,8 +24,8 @@ export default function ProductionView({ department, period, notify }: { departm
 
   const start = periodStart(period);
   const scoped = useMemo(
-    () => state.records.filter(r => r.date >= start && (department === "All departments" || getAsset(r.assetId)?.department === department)),
-    [state.records, start, department],
+    () => state.records.filter(r => r.date >= start && (department === "All departments" || getAsset(assets, r.assetId)?.department === department)),
+    [state.records, start, department, assets],
   );
   const assetIds = useMemo(() => [...new Set(scoped.map(r => r.assetId))].sort(), [scoped]);
   const selected = assetIds.includes(assetPick) ? assetPick : assetIds[0] ?? "";
@@ -52,21 +52,20 @@ export default function ProductionView({ department, period, notify }: { departm
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return scoped
-      .filter(r => !q || r.assetId.toLowerCase().includes(q) || (getAsset(r.assetId)?.name.toLowerCase().includes(q) ?? false))
+      .filter(r => !q || r.assetId.toLowerCase().includes(q) || (getAsset(assets, r.assetId)?.name.toLowerCase().includes(q) ?? false))
       .sort((a, b) => b.date.localeCompare(a.date) || a.assetId.localeCompare(b.assetId));
-  }, [scoped, query]);
+  }, [scoped, query, assets]);
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const current = Math.min(page, pageCount);
   const visible = rows.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
-  const selectedAsset = getAsset(selected);
+  const selectedAsset = getAsset(assets, selected);
 
   return (
     <>
       <SyncCard
         icon={<Gauge size={19} />}
-        title="Direct Viewer · Production parameters"
-        description="Pressure, temperature and gas / water / oil flowrates imported per asset_id and date."
-        result={state.result}
+        title="Production readings · Neon"
+        description="Pressure, temperature and flowrate records currently stored in the Neon database."
         recordCount={state.records.length}
         syncing={syncing}
         ready={ready}
@@ -86,7 +85,7 @@ export default function ProductionView({ department, period, notify }: { departm
           <div><div className="panel-kicker">OPERATING TREND</div><h2>{selectedAsset ? selectedAsset.name : "Operating parameters"}</h2><p>{selectedAsset ? `${selectedAsset.id} · ${selectedAsset.area} · ${meta.label} (${meta.unit})` : "No production data in the selected period"}</p></div>
           <label className="select-wrap asset-select"><Database size={14} />
             <select value={selected} onChange={e => setAssetPick(e.target.value)} aria-label="Select asset" disabled={!assetIds.length}>
-              {assetIds.map(id => <option key={id} value={id}>{id} — {getAsset(id)?.name}</option>)}
+              {assetIds.map(id => <option key={id} value={id}>{id} — {getAsset(assets, id)?.name}</option>)}
             </select><ChevronDown size={13} />
           </label>
         </div>
@@ -116,7 +115,7 @@ export default function ProductionView({ department, period, notify }: { departm
           <table>
             <thead><tr><th>DATE</th><th>ASSET / ASSET ID</th><th>DISCIPLINE</th><th className="num-h">PRESSURE (BAR)</th><th className="num-h">TEMP (°C)</th><th className="num-h">GAS (MMSCFD)</th><th className="num-h">WATER (BWPD)</th><th className="num-h">OIL (BOPD)</th><th>SOURCE</th></tr></thead>
             <tbody>
-              {visible.map(r => { const a = getAsset(r.assetId); return (
+              {visible.map(r => { const a = getAsset(assets, r.assetId); return (
                 <tr key={`${r.assetId}|${r.date}`}>
                   <td className="date-cell">{formatDate(r.date)}</td>
                   <td><div className="asset-name">{a?.name}</div><div className="asset-id">{r.assetId}</div></td>
@@ -128,7 +127,7 @@ export default function ProductionView({ department, period, notify }: { departm
           </table>
           {!visible.length && <div className="empty-state">{ready && !syncing ? "No records match your filters." : "Loading…"}</div>}
         </div>
-        <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length.toLocaleString("en-US")} records <span className="demo-note">· Shared Neon database · sample source records</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
+        <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length.toLocaleString("en-US")} records <span className="demo-note">· Records read from Neon</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
       </section>
     </>
   );

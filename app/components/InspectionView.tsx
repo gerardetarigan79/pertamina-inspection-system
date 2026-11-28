@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Activity, ArrowDownRight, Database, Layers3, Ruler, Search, ShieldCheck, X } from "lucide-react";
 import { getAsset } from "../lib/assets";
 import { formatDate, periodStart } from "../lib/dates";
-import type { InspectionRecord } from "../lib/types";
+import type { InspectionRecord, RegisteredAsset } from "../lib/types";
 import { useInspectionSource } from "../lib/useSources";
 import Pager from "./Pager";
 import SyncCard from "./SyncCard";
@@ -14,7 +14,7 @@ const PAGE_SIZE = 12;
 const fmt = (n: number, d: number) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 const wallLoss = (r: InspectionRecord) => ((r.nominalMm - r.measuredMm) / r.nominalMm) * 100;
 
-export default function InspectionView({ department, period, notify }: { department: string; period: string; notify: (m: string) => void }) {
+export default function InspectionView({ assets, department, period, notify }: { assets: RegisteredAsset[]; department: string; period: string; notify: (m: string) => void }) {
   const { state, ready, syncing, error, sync } = useInspectionSource(notify);
   const [assetFilter, setAssetFilter] = useState("");
   const [query, setQuery] = useState("");
@@ -48,9 +48,9 @@ export default function InspectionView({ department, period, notify }: { departm
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return scoped
-      .filter(r => (!assetFilter || r.assetId === assetFilter) && (!q || r.assetId.toLowerCase().includes(q) || (getAsset(r.assetId)?.name.toLowerCase().includes(q) ?? false)))
+      .filter(r => (!assetFilter || r.assetId === assetFilter) && (!q || r.assetId.toLowerCase().includes(q) || (getAsset(assets, r.assetId)?.name.toLowerCase().includes(q) ?? false)))
       .sort((a, b) => b.date.localeCompare(a.date) || a.assetId.localeCompare(b.assetId) || a.tml.localeCompare(b.tml));
-  }, [scoped, assetFilter, query]);
+  }, [scoped, assetFilter, query, assets]);
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const current = Math.min(page, pageCount);
   const visible = rows.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
@@ -61,9 +61,8 @@ export default function InspectionView({ department, period, notify }: { departm
     <>
       <SyncCard
         icon={<Database size={19} />}
-        title="SAP · Surface Facility inspection"
-        description="Wall thickness and corrosion dimensions per TML, linked to asset_id."
-        result={state.result}
+        title="Surface facility inspections · Neon"
+        description="Inspection measurements currently stored in Neon and linked to the asset register."
         recordCount={state.records.length}
         syncing={syncing}
         ready={ready}
@@ -85,7 +84,7 @@ export default function InspectionView({ department, period, notify }: { departm
         </div>
         {perAsset.length ? (
           <div className="asset-cards">
-            {perAsset.map(a => { const info = getAsset(a.id); const nominal = a.weakest.nominalMm; return (
+            {perAsset.map(a => { const info = getAsset(assets, a.id); const nominal = a.weakest.nominalMm; return (
               <button key={a.id} className={`asset-card ${assetFilter === a.id ? "selected" : ""}`} aria-pressed={assetFilter === a.id} onClick={() => { setAssetFilter(assetFilter === a.id ? "" : a.id); setPage(1); }}>
                 <span className="asset-card-top"><span className="discipline-tag">{info?.type}</span><span className="asset-id">{a.id}</span></span>
                 <strong>{info?.name}</strong>
@@ -107,7 +106,7 @@ export default function InspectionView({ department, period, notify }: { departm
           <table>
             <thead><tr><th>INSPECTION DATE</th><th>ASSET / ASSET ID</th><th>TML</th><th>METHOD</th><th className="num-h">NOMINAL (MM)</th><th className="num-h">MEASURED (MM)</th><th className="num-h">WALL LOSS</th><th>CORROSION TYPE</th><th className="num-h">DEPTH × LENGTH × WIDTH (MM)</th><th>SAP NOTIF.</th></tr></thead>
             <tbody>
-              {visible.map(r => { const a = getAsset(r.assetId); return (
+              {visible.map(r => { const a = getAsset(assets, r.assetId); return (
                 <tr key={`${r.assetId}|${r.date}|${r.tml}`}>
                   <td className="date-cell">{formatDate(r.date)}</td>
                   <td><div className="asset-name">{a?.name}</div><div className="asset-id">{r.assetId}</div></td>
@@ -121,7 +120,7 @@ export default function InspectionView({ department, period, notify }: { departm
           </table>
           {!visible.length && <div className="empty-state">{emptyText}</div>}
         </div>
-        <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length} records <span className="demo-note">· Shared Neon database · sample source records</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
+        <div className="table-footer"><span>Showing <strong>{visible.length}</strong> of {rows.length} records <span className="demo-note">· Records read from Neon</span></span><Pager page={current} pageCount={pageCount} onChange={setPage} /></div>
       </section>
     </>
   );

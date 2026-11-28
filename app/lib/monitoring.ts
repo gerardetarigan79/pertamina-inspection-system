@@ -1,7 +1,7 @@
 import { getAsset } from "./assets";
 import { APP_TODAY, addDays, formatDate } from "./dates";
-import { round } from "./random";
-import type { MonitoringRecord } from "./types";
+import { round } from "./numbers";
+import type { MonitoringRecord, RegisteredAsset } from "./types";
 
 /** Standard units (data dictionary): coupon weight in g, injection in L and L/day. */
 export const WEIGHT_UNITS = { g: 1, mg: 0.001 } as const;
@@ -29,10 +29,10 @@ export const weightLossMg = (r: MonitoringRecord) => (r.couponInitialG - r.coupo
 export const lossRateMgPerDay = (r: MonitoringRecord) => weightLossMg(r) / r.exposureDays;
 export type FormErrors = Partial<Record<keyof FormValues, string>>;
 
-export function validate(v: FormValues, existing: MonitoringRecord[]): FormErrors {
+export function validate(v: FormValues, existing: MonitoringRecord[], assets: readonly RegisteredAsset[]): FormErrors {
   const e: FormErrors = {};
   if (!v.assetId) e.assetId = "Select an asset from the register.";
-  else if (!getAsset(v.assetId)) e.assetId = "Asset ID is not in the asset register.";
+  else if (!getAsset(assets, v.assetId)) e.assetId = "Asset ID is not in the asset register.";
   if (!v.date) e.date = "Date is required.";
   else if (!/^\d{4}-\d{2}-\d{2}$/.test(v.date) || addDays(v.date, 0) !== v.date) e.date = "Enter a valid date.";
   else if (v.date > APP_TODAY) e.date = `Date cannot be after today (${formatDate(APP_TODAY)}).`;
@@ -63,7 +63,7 @@ export function validate(v: FormValues, existing: MonitoringRecord[]): FormError
 export function buildRecord(v: FormValues): MonitoringRecord {
   const f = WEIGHT_UNITS[v.weightUnit];
   return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    id: "", // The database assigns the canonical record ID on insert.
     assetId: v.assetId, date: v.date, couponId: v.couponId.trim(),
     couponInitialG: round(parseNumber(v.initial) * f, 4),
     couponFinalG: round(parseNumber(v.retrieved) * f, 4),

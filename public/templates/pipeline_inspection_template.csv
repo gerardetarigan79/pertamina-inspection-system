@@ -1,3 +1,1 @@
 asset_id,inspection_date,method,measured_thickness,thickness_unit,pressure,pressure_unit,inspector,remarks
-PHM-PL-001,2026-11-13,UT,8.42,mm,42.8,bar,Budi Santoso,Routine UT survey
-PHM-PL-008,2026-11-11,MFL,6.18,mm,36.2,bar,Dewi Lestari,Corrosion pitting near KP 2.4
