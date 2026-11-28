@@ -2,7 +2,8 @@
 
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { Activity, Check, ChevronDown, Database, Droplets, Info, Plus, Scale, Search, Trash2, X } from "lucide-react";
-import { ASSETS, getAsset } from "../lib/assets";
+import { getAsset } from "../lib/assets";
+import type { RegisteredAsset } from "../lib/types";
 import { buildAssetConditions } from "../lib/condition";
 import { APP_TODAY, formatDate } from "../lib/dates";
 import {
@@ -34,21 +35,22 @@ function Field({ label, error, hint, children, htmlFor, required }: { label: str
   );
 }
 
-export default function MonitoringView({ department, notify }: { department: string; notify: (m: string) => void }) {
-  const { records, ready, add, remove } = useMonitoringStore();
+export default function MonitoringView({ assets, department, notify }: { assets: RegisteredAsset[]; department: string; notify: (m: string) => void }) {
+  const { records, ready, error: monitoringError, add, remove } = useMonitoringStore();
   const insp = useInspectionSource(notify);
   const uid = useId().replace(/:/g, "");
   const id = (name: string) => `${uid}-${name}`;
 
   const [form, setForm] = useState<FormValues>(emptyForm());
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [seriesKey, setSeriesKey] = useState<SeriesKey>("loss");
   const [assetPick, setAssetPick] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
-  const errors: FormErrors = submitted ? validate(form, records) : {};
+  const errors: FormErrors = submitted ? validate(form, records, assets) : {};
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => setForm(f => ({ ...f, [key]: value }));
 
   // Live preview of what will be stored, in standard units.
@@ -67,26 +69,28 @@ export default function MonitoringView({ department, notify }: { department: str
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    const found = validate(form, records);
+    const found = validate(form, records, assets);
     if (Object.keys(found).length) {
       const first = (Object.keys(found) as (keyof FormValues)[])[0];
       document.getElementById(id(first))?.focus();
       return;
     }
+    setSaving(true);
     try {
       await add(buildRecord(form));
+      const hidden = department !== "All departments" && getAsset(assets, form.assetId)?.department !== department;
+      notify(`Monitoring record saved for ${form.assetId}.${hidden ? " It is hidden by the current department filter." : ""}`);
+      setForm({ ...emptyForm(form.assetId), date: form.date, weightUnit: form.weightUnit, rateUnit: form.rateUnit, inhibitor: form.inhibitor });
+      setSubmitted(false);
+      setPage(1);
     } catch (error) {
       notify(error instanceof Error ? error.message : "Unable to save monitoring record to Neon.");
-      return;
+    } finally {
+      setSaving(false);
     }
-    const hidden = department !== "All departments" && getAsset(form.assetId)?.department !== department;
-    notify(`Monitoring record saved for ${form.assetId}.${hidden ? " It is hidden by the current department filter." : ""}`);
-    setForm({ ...emptyForm(form.assetId), date: form.date, weightUnit: form.weightUnit, rateUnit: form.rateUnit, inhibitor: form.inhibitor });
-    setSubmitted(false);
-    setPage(1);
   };
 
-  const scoped = useMemo(() => records.filter(r => department === "All departments" || getAsset(r.assetId)?.department === department), [records, department]);
+  const scoped = useMemo(() => records.filter(r => department === "All departments" || getAsset(assets, r.assetId)?.department === department), [records, department, assets]);
   const assetIds = useMemo(() => [...new Set(scoped.map(r => r.assetId))].sort(), [scoped]);
   // Until the user picks one, show the asset whose latest coupon loss rate is highest.
   const defaultAsset = useMemo(() => {
@@ -97,7 +101,7 @@ export default function MonitoringView({ department, notify }: { department: str
     return best;
   }, [scoped]);
   const selected = assetIds.includes(assetPick) ? assetPick : defaultAsset || assetIds[0] || "";
-  const selectedAsset = getAsset(selected);
+  const selectedAsset = getAsset(assets, selected);
   const meta = SERIES.find(s => s.key === seriesKey)!;
 
   const assetRecords = useMemo(() => scoped.filter(r => r.assetId === selected).sort((a, b) => a.date.localeCompare(b.date)), [scoped, selected]);
@@ -113,7 +117,7 @@ export default function MonitoringView({ department, notify }: { department: str
     return { lastLoss, change: firstLoss > 0 ? ((lastLoss - firstLoss) / firstLoss) * 100 : null, lastRate: last.injectionRateLpd, avgRate, since: first.date, count: assetRecords.length };
   }, [assetRecords]);
 
-  const inspection = useMemo(() => buildAssetConditions(insp.state.records).find(a => a.asset.id === selected), [insp.state.records, selected]);
+  const inspection = useMemo(() => buildAssetConditions(insp.state.records, assets).find(a => a.asset.id === selected), [insp.state.records, selected, assets]);
 
   const summary = useMemo(() => {
     const latest = new Map<string, (typeof scoped)[number]>();
@@ -127,9 +131,9 @@ export default function MonitoringView({ department, notify }: { department: str
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return scoped
-      .filter(r => !q || r.assetId.toLowerCase().includes(q) || r.couponId.toLowerCase().includes(q) || (getAsset(r.assetId)?.name.toLowerCase().includes(q) ?? false))
+      .filter(r => !q || r.assetId.toLowerCase().includes(q) || r.couponId.toLowerCase().includes(q) || (getAsset(assets, r.assetId)?.name.toLowerCase().includes(q) ?? false))
       .sort((a, b) => b.date.localeCompare(a.date) || a.assetId.localeCompare(b.assetId));
-  }, [scoped, query]);
+  }, [scoped, query, assets]);
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const current = Math.min(page, pageCount);
   const visible = rows.slice((current - 1) * PAGE_SIZE, (current - 1) * PAGE_SIZE + PAGE_SIZE);
@@ -144,9 +148,9 @@ export default function MonitoringView({ department, notify }: { department: str
         <form onSubmit={submit} noValidate>
           <div className="form-grid">
             <Field label="Asset" htmlFor={id("assetId")} error={errors.assetId} required>
-              <select id={id("assetId")} value={form.assetId} onChange={e => set("assetId", e.target.value)} aria-invalid={!!errors.assetId}>
+              <select id={id("assetId")} value={form.assetId} onChange={e => set("assetId", e.target.value)} aria-invalid={!!errors.assetId} disabled={!assets.length}>
                 <option value="">Select asset…</option>
-                {ASSETS.map(a => <option key={a.id} value={a.id}>{a.id} — {a.name}</option>)}
+                {assets.map(a => <option key={a.id} value={a.id}>{a.id} — {a.name}</option>)}
               </select>
             </Field>
             <Field label="Reading date" htmlFor={id("date")} error={errors.date} required>
@@ -196,10 +200,12 @@ export default function MonitoringView({ department, notify }: { department: str
               </div>
             </div>
           </div>
+          {monitoringError && <div className="sync-error" role="alert"><Info size={14} /> {monitoringError}</div>}
+          {!assets.length && <div className="sync-error" role="alert"><Info size={14} /> The Neon asset register is empty or unavailable. A reading cannot be linked to an asset.</div>}
           {submitted && Object.keys(errors).length > 0 && <div className="sync-error" role="alert"><Info size={14} /> Please fix {Object.keys(errors).length} {Object.keys(errors).length === 1 ? "field" : "fields"} before saving.</div>}
           <div className="form-actions">
             <button type="button" className="button button-quiet" onClick={() => { setForm(emptyForm()); setSubmitted(false); }}><X size={15} /> Clear</button>
-            <button type="submit" className="button button-primary"><Plus size={16} /> Save record</button>
+            <button type="submit" className="button button-primary" disabled={saving || !assets.length || !ready || Boolean(monitoringError)}><Plus size={16} /> {saving ? "Saving…" : "Save record"}</button>
           </div>
         </form>
       </section>
@@ -216,7 +222,7 @@ export default function MonitoringView({ department, notify }: { department: str
           <div><div className="panel-kicker">MONITORING TREND</div><h2>{selectedAsset ? selectedAsset.name : "Corrosion monitoring"}</h2><p>{selectedAsset ? `${selectedAsset.id} · ${selectedAsset.area} · ${meta.label} (${meta.unit}) · all readings` : "No monitoring readings yet"}</p></div>
           <label className="select-wrap asset-select"><Database size={14} />
             <select value={selected} onChange={e => setAssetPick(e.target.value)} aria-label="Select asset" disabled={!assetIds.length}>
-              {assetIds.map(a => <option key={a} value={a}>{a} — {getAsset(a)?.name}</option>)}
+              {assetIds.map(a => <option key={a} value={a}>{a} — {getAsset(assets, a)?.name}</option>)}
             </select><ChevronDown size={13} />
           </label>
         </div>
@@ -240,7 +246,7 @@ export default function MonitoringView({ department, notify }: { department: str
                   {inspection && inspection.condition !== "No data"
                     ? <>Lowest thickness {fmt(inspection.minThicknessMm!, 2)} mm of {fmt(inspection.nominalMm!, 2)} mm nominal ({fmt(inspection.wallLossPct!, 1)}% wall loss, inspected {formatDate(inspection.latestDate!)})
                       {inspection.corrosionRate !== null && <> · thickness corrosion rate {fmt(inspection.corrosionRate, 2)} mm/yr between inspections</>}. Compare with the coupon trend above.</>
-                    : insp.ready ? "No SAP inspection records for this asset yet, so there is nothing to compare against." : "Loading inspection records…"}
+                    : insp.ready ? "No thickness inspection records for this asset are available in Neon, so there is nothing to compare against." : "Loading inspection records…"}
                 </span>
               </div>
             </div>
@@ -258,7 +264,7 @@ export default function MonitoringView({ department, notify }: { department: str
           <table>
             <thead><tr><th>DATE</th><th>ASSET / ASSET ID</th><th>COUPON</th><th className="num-h">INITIAL (G)</th><th className="num-h">RETRIEVED (G)</th><th className="num-h">EXPOSURE (D)</th><th className="num-h">LOSS (MG)</th><th className="num-h">LOSS RATE (MG/DAY)</th><th>INHIBITOR</th><th className="num-h">INJECTED (L)</th><th className="num-h">INJ. RATE (L/DAY)</th><th>SOURCE</th><th /></tr></thead>
             <tbody>
-              {visible.map(r => { const a = getAsset(r.assetId); return (
+              {visible.map(r => { const a = getAsset(assets, r.assetId); return (
                 <tr key={r.id}>
                   <td className="date-cell">{formatDate(r.date)}</td>
                   <td><div className="asset-name">{a?.name}</div><div className="asset-id">{r.assetId}</div></td>

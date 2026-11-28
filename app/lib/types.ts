@@ -4,8 +4,9 @@ export type RegisteredAsset = {
   id: string; // unified asset_id
   name: string;
   area: string;
-  department: Department;
+  department: string;
   type: string;
+  materialType?: string | null;
 };
 
 /** Production operating parameters, one record per asset_id per day (US-02). */
@@ -17,7 +18,7 @@ export type ProductionRecord = {
   gas: number; // MMSCFD
   water: number; // BWPD
   oil: number; // BOPD
-  source: "Direct Viewer";
+  source: string;
 };
 
 /** Surface facility inspection record from SAP, one per TML per inspection (US-03). */
@@ -34,7 +35,7 @@ export type InspectionRecord = {
   widthMm: number;
   notification: string; // SAP notification number
   team: string;
-  source: "SAP";
+  source: string;
 };
 
 /**
@@ -53,10 +54,10 @@ export type MonitoringRecord = {
   injectedL: number; // inhibitor volume injected
   injectionRateLpd: number; // measured injection rate, L/day
   notes: string;
-  source: "Form" | "Excel (sample)";
+  source: string;
 };
 
-/** Raw payloads as returned by the (mock) source systems. */
+/** Raw payload contracts for configured external source adapters. */
 export type RawProduction = {
   asset_tag: string;
   reading_date: string;

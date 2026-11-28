@@ -1,8 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, Upload, X } from "lucide-react";
 import { validateInspectionCsv, type CleanRecord, type ParseResult, type RowStatus } from "../lib/inspection-import";
+type StoredPipelineInspection = {
+  assetId: string;
+  date: string;
+  method: string;
+  thicknessMm: number | string;
+  pressureBar: number | string | null;
+  inspector: string;
+  remarks?: string | null;
+};
+
 type Props = {
   knownAssetIds: string[]; // from the asset register
   onImported?: (count: number, records: CleanRecord[]) => void;
@@ -19,16 +29,23 @@ export default function InspectionImport({ knownAssetIds, onImported }: Props) {
   const [result, setResult] = useState<ParseResult | null>(null);
   const [filter, setFilter] = useState<"all" | RowStatus>("all");
   const [imported, setImported] = useState<CleanRecord[]>([]);
+  const [importedError, setImportedError] = useState("");
+  const [importedLoading, setImportedLoading] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const refreshImported = async () => {
+  const refreshImported = useCallback(async () => {
     const response = await fetch("/api/pipeline-inspections", { cache: "no-store" });
     const payload = await response.json();
     if (!response.ok || !payload.success || !Array.isArray(payload.records)) throw new Error(payload.message ?? "Unable to load pipeline inspections from Neon.");
-    setImported(payload.records.map((r: any) => ({ assetId: r.assetId, inspectionDate: r.date, method: r.method, thicknessMm: Number(r.thicknessMm), pressureBar: r.pressureBar == null ? null : Number(r.pressureBar), inspector: r.inspector, remarks: r.remarks ?? "" })));
-  };
+    const records = payload.records as StoredPipelineInspection[];
+    setImported(records.map((r) => ({ assetId: r.assetId, inspectionDate: r.date, method: r.method, thicknessMm: Number(r.thicknessMm), pressureBar: r.pressureBar == null ? null : Number(r.pressureBar), inspector: r.inspector, remarks: r.remarks ?? "" })));
+  }, []);
 
-  useEffect(() => { void refreshImported().catch(error => window.alert(error instanceof Error ? error.message : "Unable to load pipeline inspections.")); }, []);
+  useEffect(() => {
+    void refreshImported()
+      .catch(error => setImportedError(error instanceof Error ? error.message : "Unable to load pipeline inspections."))
+      .finally(() => setImportedLoading(false));
+  }, [refreshImported]);
 
   const handleFile = async (file?: File) => {
     if (!file) return;
@@ -62,10 +79,11 @@ export default function InspectionImport({ knownAssetIds, onImported }: Props) {
       const payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.message ?? "Import failed.");
       await refreshImported();
+      setImportedError("");
       onImported?.(payload.imported, importable);
       reset();
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Unable to save records to Neon.");
+      setImportedError(error instanceof Error ? error.message : "Unable to save records to Neon.");
     }
   };
 
@@ -95,6 +113,8 @@ export default function InspectionImport({ knownAssetIds, onImported }: Props) {
         </label>
 
         {result?.fileErrors.map(msg => <div className="import-error" key={msg}>{msg}</div>)}
+        {importedLoading && <div className="empty-state">Loading previously stored pipeline inspections from Neon…</div>}
+        {importedError && <div className="sync-error" role="alert">{importedError}</div>}
       </section>
 
       {result && result.rows.length > 0 && (

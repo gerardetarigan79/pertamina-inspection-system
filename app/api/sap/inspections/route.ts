@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
-import { sapInspectionPayload, validWindow } from "../../../lib/mock-sources";
 
 export const dynamic = "force-dynamic";
 
-// Mock SAP PM endpoint: GET /api/sap/inspections?from=YYYY-MM-DD&to=YYYY-MM-DD
-export async function GET(request: Request) {
-  const params = new URL(request.url).searchParams;
-  const from = params.get("from") ?? "";
-  const to = params.get("to") ?? "";
-  if (!validWindow(from, to)) {
-    return NextResponse.json({ error: "from/to must be valid ISO dates (YYYY-MM-DD), from <= to, max 400 days" }, { status: 400 });
-  }
-  await new Promise(resolve => setTimeout(resolve, 700)); // simulate source latency
-  return NextResponse.json(sapInspectionPayload(from, to));
+/** SAP PM is an external integration and must not be simulated with sample records. */
+export async function GET() {
+  return NextResponse.json(
+    {
+      success: false,
+      message: "SAP PM integration is not configured. No records were generated or imported.",
+    },
+    { status: 501 },
+  );
 }

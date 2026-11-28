@@ -1,5 +1,5 @@
 import { getAsset } from "./assets";
-import type { InspectionRecord, ProductionRecord, RawInspection, RawProduction, SyncResult } from "./types";
+import type { InspectionRecord, ProductionRecord, RawInspection, RawProduction, RegisteredAsset, SyncResult } from "./types";
 
 type Merged<T> = { records: T[]; result: SyncResult };
 
@@ -30,11 +30,11 @@ const productionKey = (r: ProductionRecord) => `${r.assetId}|${r.date}`;
 const inspectionKey = (r: InspectionRecord) => `${r.assetId}|${r.date}|${r.tml}`;
 
 /** US-02: one production record per asset_id and date; unknown tags are not stored. */
-export function mergeProduction(existing: ProductionRecord[], raw: RawProduction[], window: { from: string; to: string }) {
+export function mergeProduction(existing: ProductionRecord[], raw: RawProduction[], window: { from: string; to: string }, assets: readonly RegisteredAsset[]) {
   const unlinked = new Set<string>();
   const incoming: { key: string; record: ProductionRecord }[] = [];
   for (const r of raw) {
-    if (!getAsset(r.asset_tag)) { unlinked.add(r.asset_tag); continue; }
+    if (!getAsset(assets, r.asset_tag)) { unlinked.add(r.asset_tag); continue; }
     const record: ProductionRecord = {
       assetId: r.asset_tag, date: r.reading_date, pressure: r.pressure_bar, temperature: r.temperature_c,
       gas: r.gas_mmscfd, water: r.water_bwpd, oil: r.oil_bopd, source: "Direct Viewer",
@@ -45,11 +45,11 @@ export function mergeProduction(existing: ProductionRecord[], raw: RawProduction
 }
 
 /** US-03: SAP inspection records of Surface Facility assets, linked by asset_id. */
-export function mergeInspections(existing: InspectionRecord[], raw: RawInspection[], window: { from: string; to: string }) {
+export function mergeInspections(existing: InspectionRecord[], raw: RawInspection[], window: { from: string; to: string }, assets: readonly RegisteredAsset[]) {
   const unlinked = new Set<string>();
   const incoming: { key: string; record: InspectionRecord }[] = [];
   for (const r of raw) {
-    const asset = getAsset(r.equipment_id);
+    const asset = getAsset(assets, r.equipment_id);
     if (!asset || asset.department !== "Surface Facility") { unlinked.add(r.equipment_id); continue; }
     const record: InspectionRecord = {
       assetId: r.equipment_id, date: r.inspection_date, tml: r.tml_id, method: r.method,
